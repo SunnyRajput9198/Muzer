@@ -16,7 +16,7 @@ datasource db {
 
 model User {
   id    String    @id @default(uuid())
-  email String 
+  email String    @unique
   Provider Provider
   streams Stream[] // this is a relationship to the streams table basically called as reverse relationship
   upvotes Upvote[] // this is a relationship to the upvotes table basically called as reverse relationship
@@ -25,6 +25,11 @@ model User {
 model Stream{
   id String @id @default(uuid())
   type StreamType
+  url String
+  title String  @default("")
+  smallImg String @default("")
+  bigImg String  @default("")
+  extractedId String
   active Boolean
   UserId String
   user User @relation(fields: [UserId], references: [id])  //relation to user table
@@ -42,7 +47,7 @@ model Upvote{
 
 enum StreamType {
   Youtube
- Spotify
+Spotify
 }
 enum Provider {
   Google
