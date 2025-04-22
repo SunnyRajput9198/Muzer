@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String   @id @default(uuid())
+  email    String   @unique
+  Provider Provider
+  streams  Stream[] // this is a relationship to the streams table basically called as reverse relationship
+  upvotes  Upvote[] // this is a relationship to the upvotes table basically called as reverse relationship
+}
+
+model Stream {
+  id          String     @id @default(uuid())
+  type        StreamType
+  url         String
+  title       String     @default("")
+  smallImg    String     @default("")
+  bigImg      String     @default("")
+  extractedId String
+  active      Boolean
+  UserId      String
+  user        User       @relation(fields: [UserId], references: [id]) //relation to user table
+  upvotes     Upvote[] // this is a relationship to the upvotes table basically called as reverse relationship
+}
+
+model Upvote {
+  id       String @id @default(uuid())
+  userId   String
+  streamId String
+  user     User   @relation(fields: [userId], references: [id])
+  stream   Stream @relation(fields: [streamId], references: [id])
+
+  @@unique([userId, streamId]) //unique constraint for upvote table in order to avoid duplicate upvote
+}
+
+enum StreamType {
+  Youtube
+  Spotify
+}
+
+enum Provider {
+  Google
+}

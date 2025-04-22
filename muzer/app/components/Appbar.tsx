@@ -1,5 +1,6 @@
 "use client"// kyuki onclick use hua hai
 import { signIn, useSession,signOut } from "next-auth/react"
+import { Button } from "@/app/components/ui/button";
 export default function Appbar() {
     //usesession must be wrapped inside a sessionProvider
     const session = useSession();//useSession() is a React hook provided by NextAuth.js that allows you to access the current user's session (authentication info) on the client side.
@@ -10,13 +11,13 @@ export default function Appbar() {
 
     return (
         <div>
-            <div className="flex  justify-between">
-                <div>
-                    Mizo
+            <div className="flex  justify-between px-20">
+                <div className="text-lg font-bold flex flex-col justify-center text-white">
+                    Muzer
                 </div>
                 <div>
-                 {session.data?.user && <button className="m-2 p-2 bg-blue-400" onClick={()=>signOut()}>Log Out</button>}
-                    {!session.data?.user && <button className="m-2 p-2 bg-blue-400" onClick={()=>signIn()}>Sign In</button>}
+                 {session.data?.user && <Button className="bg-purple-600 text-white hovering:bg-purple-700" onClick={()=>signOut()}>Sign Out</Button>}
+                    {!session.data?.user && <Button className="bg-purple-600 text-white hovering:bg-purple-700" onClick={()=>signIn()}>Sign In</Button>}
                 </div>
             </div>
         </div>
