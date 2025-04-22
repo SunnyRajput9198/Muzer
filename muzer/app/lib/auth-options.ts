@@ -6,10 +6,10 @@ import GoogleProvider from "next-auth/providers/google";
 
 import { emailSchema, passwordSchema } from "../schema/cridentials-schema";
 import { PrismaClientInitializationError } from "@prisma/client/runtime/library";
+import { PrismaClient } from "@prisma/client";
 
-import { prismaclient } from "@/app/lib/db";
 
-const prisma = prismaclient;
+const prisma = PrismaClient;
 
 export const authOptions = {
   providers: [
