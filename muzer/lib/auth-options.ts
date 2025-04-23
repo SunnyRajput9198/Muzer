@@ -9,7 +9,7 @@ import { PrismaClientInitializationError } from "@prisma/client/runtime/library"
 import { PrismaClient } from "@prisma/client";
 
 
-const prisma = PrismaClient;
+const prisma =new PrismaClient();
 
 export const authOptions = {
   providers: [

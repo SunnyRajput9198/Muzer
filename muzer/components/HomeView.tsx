@@ -1,6 +1,6 @@
 "use client";
 import { toast } from "sonner";
-import { Appbar } from "@/components/Appbar";
+import  Appbar  from "@/components/Appbar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

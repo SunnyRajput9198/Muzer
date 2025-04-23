@@ -20,7 +20,7 @@ export default function NowPlaying({
   playNext,
   playNextLoader,
 }: Props) {
-  const videoPlayerRef = useRef<HTMLDivElement>();
+  const videoPlayerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!videoPlayerRef.current || !currentVideo) {
@@ -55,7 +55,6 @@ export default function NowPlaying({
             <div>
               {playVideo ? (
                 <>
-                  {/* @ts-ignore */}
                   <div ref={videoPlayerRef} className="w-full" />
                 </>
               ) : (

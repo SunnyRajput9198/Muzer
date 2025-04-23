@@ -7,9 +7,9 @@ import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 import { useSocket } from "@/context/socket-context";
 import { useSession } from "next-auth/react";
 import NowPlaying from "./NowPlaying";
-import Queue from "./Quene"
+import Queue from "./Quene";
 import AddSongForm from "./AddSongForm";
-import  Appbar  from "../Appbar";
+import Appbar from "../Appbar";
 
 export default function StreamView({
   creatorId,
@@ -31,44 +31,42 @@ export default function StreamView({
   const user = useSession().data?.user;
 
   useEffect(() => {
-    if (socket) {
-      socket.onmessage = async (event) => {
-        const { type, data } = JSON.parse(event.data) || {};
-        if (type === `new-stream/${spaceId}`) {
-          console.log(type);
-          addToQueue(data);
-        } else if (type === `new-vote/${spaceId}`) {
-          setQueue((prev) => {
-            return prev
-              .map((v) => {
-                if (v.id === data.streamId) {
-                  return {
-                    ...v,
-                    upvotes: v.upvotes + (data.vote === "upvote" ? 1 : -1),
-                    haveUpvoted:
-                      data.votedBy === user?.id
-                        ? data.vote === "upvote"
-                        : v.haveUpvoted,
-                  };
-                }
-                return v;
-              })
-              .sort((a, b) => b.upvotes - a.upvotes);
-          });
-        } else if (type === "error") {
-          enqueueToast("error", data.message);
-          setLoading(false);
-        } else if (type === `play-next/${spaceId}`) {
-          await refreshStreams();
-        } else if (type === `remove-song/${spaceId}`) {
-          setQueue((prev) => {
-            return prev.filter((stream) => stream.id !== data.streamId);
-          });
-        } else if (type === `empty-queue/${spaceId}`) {
-          setQueue([]);
-        }
-      };
-    }
+    if (!socket) return;
+
+    socket.onmessage = async (event) => {
+      const { type, data } = JSON.parse(event.data) || {};
+
+      if (type === `new-stream/${spaceId}`) {
+        addToQueue(data);
+      } else if (type === `new-vote/${spaceId}`) {
+        setQueue((prev) =>
+          prev
+            .map((v) => {
+              if (v.id === data.streamId) {
+                return {
+                  ...v,
+                  upvotes: v.upvotes + (data.vote === "upvote" ? 1 : -1),
+                  haveUpvoted:
+                    data.votedBy === user?.id
+                      ? data.vote === "upvote"
+                      : v.haveUpvoted,
+                };
+              }
+              return v;
+            })
+            .sort((a, b) => b.upvotes - a.upvotes)
+        );
+      } else if (type === "error") {
+        enqueueToast("error", data.message);
+        setLoading(false);
+      } else if (type === `play-next/${spaceId}`) {
+        await refreshStreams();
+      } else if (type === `remove-song/${spaceId}`) {
+        setQueue((prev) => prev.filter((stream) => stream.id !== data.streamId));
+      } else if (type === `empty-queue/${spaceId}`) {
+        setQueue([]);
+      }
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -87,16 +85,16 @@ export default function StreamView({
         credentials: "include",
       });
       const json = await res.json();
+
       setQueue(
-        json.streams.sort((a: any, b: any) => (a.upvotes < b.upvotes ? 1 : -1)),
+        json.streams.sort((a: any, b: any) => (a.upvotes < b.upvotes ? 1 : -1))
       );
 
       setCurrentVideo((video) => {
-        if (video?.id === json.activeStream?.stream?.id) {
-          return video;
-        }
+        if (video?.id === json.activeStream?.stream?.id) return video;
         return json.activeStream.stream;
       });
+
       setSpaceName(json.spaceName);
     } catch (error) {
       enqueueToast("error", "Something went wrong");
@@ -115,12 +113,8 @@ export default function StreamView({
 
   const enqueueToast = (type: "error" | "success", message: string) => {
     const toastFn = type === "error" ? toast.error : toast.success;
-  
-    toastFn(message, {
-      duration: 5000,
-    });
+    toastFn(message, { duration: 5000 });
   };
-  
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -160,7 +154,6 @@ export default function StreamView({
           </div>
         </div>
       </div>
-      
     </div>
   );
 }

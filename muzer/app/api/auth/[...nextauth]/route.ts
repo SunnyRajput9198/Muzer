@@ -20,7 +20,7 @@ const handler = NextAuth({
             await prisma.user.create({
               data:{
                 email:params.user.email??"",
-                Provider:"Google"
+                provider:"Google"
               }
             })
             return true

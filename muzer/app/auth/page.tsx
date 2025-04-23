@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-import { SignInFlow } from "@/app/types/auth-types";
+import { SignInFlow } from "@/types/auth-types";
 import AuthScreen from "@/components/auth/authscreen";
 
 export default function AuthPage({
