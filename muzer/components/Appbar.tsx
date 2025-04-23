@@ -1,6 +1,6 @@
 "use client"// kyuki onclick use hua hai
 import { signIn, useSession,signOut } from "next-auth/react"
-import { Button } from "@/app/components/ui/button";
+import { Button } from "@/components/ui/button";
 export default function Appbar() {
     //usesession must be wrapped inside a sessionProvider
     const session = useSession();//useSession() is a React hook provided by NextAuth.js that allows you to access the current user's session (authentication info) on the client side.

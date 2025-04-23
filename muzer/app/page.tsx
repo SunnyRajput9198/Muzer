@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { Button } from "@/app/components/ui/button";//npx shadcn@latest init add  button
-import { Input } from "@/app/components/ui/input";//npx shadcn@latest init add  button 
+import { Button } from "@/components/ui/button";//npx shadcn@latest init add  button
+import { Input } from "@/components/ui/input";//npx shadcn@latest init add  button 
 
 import { Users, Radio, Headphones } from "lucide-react";
-import  Appbar  from "@/app/components/Appbar";
+import  Appbar  from "@/components/Appbar";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
-import { authOptions } from "@/app/lib/auth-options";
-
+import { authOptions } from "@/lib/auth-options";
+console.log(process.env.GOOGLE_CLIENT_ID)
+ console.log(process.env.GOOGLE_CLIENT_SECRET)
 
 export default async function LandingPage() {
   const session = await getServerSession(authOptions);
