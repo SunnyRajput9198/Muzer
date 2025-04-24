@@ -1,38 +1,45 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useSocket } from "@/context/socket-context";
 import jwt from "jsonwebtoken";
 import StreamView from "@/components/StreamView";
 import ErrorScreen from "@/components/ErrorScreen";
 import LoadingScreen from "@/components/LoadingScreen";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation"; // Import useSearchParams
+import { useSearchParams as useNextSearchParams } from "next/navigation"; // For accessing params dynamically
 
-export default function Component({ params: { spaceId } }: { params: { spaceId: string } }) {
+export default function Component() {
+  const searchParams = useNextSearchParams(); // Get params dynamically
+  const spaceId = searchParams?.get("spaceId"); // Access spaceId safely from the params
   const { socket, user, loading, setUser, connectionError } = useSocket();
   const [creatorId, setCreatorId] = useState<string>();
   const [loading1, setLoading1] = useState(true);
   const router = useRouter();
 
+  // Log to see the params dynamically
   console.log(spaceId);
 
   useEffect(() => {
-    async function fetchHostId() {
-      try {
-        const response = await fetch(`/api/spaces/?spaceId=${spaceId}`, {
-          method: "GET",
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data.message || "Failed to retrieve space's host id");
+    if (spaceId) {
+      async function fetchHostId() {
+        try {
+          const response = await fetch(`/api/spaces/?spaceId=${spaceId}`, {
+            method: "GET",
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || "Failed to retrieve space's host id");
+          }
+          setCreatorId(data.hostId);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setLoading1(false);
         }
-        setCreatorId(data.hostId);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading1(false);
       }
+      fetchHostId();
     }
-    fetchHostId();
   }, [spaceId]);
 
   useEffect(() => {
@@ -85,7 +92,7 @@ export default function Component({ params: { spaceId } }: { params: { spaceId: 
     router.push(`/dashboard/${spaceId}`);
   }
 
-  return <StreamView creatorId={creatorId as string} playVideo={false} spaceId={spaceId} />;
+  return <StreamView creatorId={creatorId as string} playVideo={false} spaceId={spaceId as string} />;
 }
 
 export const dynamic = "auto";
