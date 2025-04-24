@@ -1,6 +1,6 @@
 
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, use,useState } from "react";
 import { useSocket } from "@/context/socket-context";
 import jwt from "jsonwebtoken";
 import StreamView from "@/components/StreamView";
@@ -10,17 +10,13 @@ import LoadingScreen from "@/components/LoadingScreen";
 
 
 export default function Component({params:{spaceId}}:{params:{spaceId:string}}) {
-
+ 
 
   const { socket, user, loading, setUser, connectionError } = useSocket();
 
 
   const [creatorId,setCreatorId]=useState<string | null>(null);
   const [loading1, setLoading1] = useState(true);
-  
- 
- 
-  
   
   useEffect(()=>{
     async function fetchHostId(){
