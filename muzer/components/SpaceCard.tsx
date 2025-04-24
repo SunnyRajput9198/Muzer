@@ -24,20 +24,20 @@ interface SpaceCardProps {
   };
   handleDeleteSpace: (id: string) => void;
 }
-
+ //The SpacesCard component receives two props:1.space: An object containing the ID and name of the space to be displayed.2.handleDeleteSpace: A function that is called when the user clicks the delete button, passing the ID of the space to be deleted.
 export default function SpacesCard({
   space,
   handleDeleteSpace,
 }: SpaceCardProps) {
   const router = useRouter();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [spaceToDelete, setSpaceToDelete] = useState<string | null>(null);
-
+  const [isDialogOpen, setIsDialogOpen] = useState(false);//isDialogOpen: A boolean state to manage the visibility of the delete confirmation dialog.
+  const [spaceToDelete, setSpaceToDelete] = useState<string | null>(null);//spaceToDelete: Stores the ID of the space that is being prepared for deletion.
+//handleDeleteClick: A function that is called when the user clicks the delete button. It sets the selected space's ID in the spaceToDelete state and opens the delete confirmation dialog.
   const handleDeleteClick = (id: string) => {
     setSpaceToDelete(id);
     setIsDialogOpen(true);
   };
-
+//confirmDelete: A function that is called when the user clicks the delete button. It checks if a space is selected for deletion, and if so, it calls the handleDeleteSpace function with the selected space's ID.
   const confirmDelete = () => {
     if (spaceToDelete) {
       handleDeleteSpace(spaceToDelete);
@@ -45,7 +45,7 @@ export default function SpacesCard({
       setIsDialogOpen(false);
     }
   };
-
+//motion.div: The card container and image elements have animations to scale and fade them in on render. This is done using framer-motion for smooth, dynamic effects.
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -53,6 +53,7 @@ export default function SpacesCard({
       transition={{ duration: 0.5 }}
       className="p-4 md:p-6"
     >
+      {/*The card contains an image and space name in the content section. */}
       <Card className="w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-700 bg-gray-800 transition-all duration-300 ease-in-out hover:shadow-[0_10px_20px_rgba(128,90,213,0.5)]">
         <CardContent className="p-0">
           <motion.div
@@ -90,6 +91,7 @@ export default function SpacesCard({
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-2 p-4 sm:p-6 md:flex-row md:justify-between md:space-x-4 md:space-y-0">
+          {/* Navigates to the detailed space page when clicked. */}
           <Button
             variant="outline"
             size="lg"
@@ -99,6 +101,7 @@ export default function SpacesCard({
             <ArrowRight className="mr-2 h-5 w-5" />
             View Space
           </Button>
+          {/*Triggers a dialog to confirm deletion. */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -142,3 +145,9 @@ export default function SpacesCard({
     </motion.div>
   );
 }
+//explaination:read if you have time
+// SpacesCard shows a space with an image, name, and action buttons.
+// Clicking "View Space" navigates to the space's dashboard using router.push().
+// Clicking "Delete Space" opens a confirmation dialog via state isDialogOpen.
+// On confirm, it triggers handleDeleteSpace() with the selected space's ID.
+// Framer Motion adds animations; Shadcn UI and Tailwind handle styling.

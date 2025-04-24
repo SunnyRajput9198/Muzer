@@ -21,13 +21,14 @@ interface Space {
   name: string;
   startTime: Date | null;
 }
-
+//This code defines a React component named HomeView, likely for a web app where users can create, view, and delete "Spaces"
 export default function HomeView() {
-  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
-  const [spaceName, setSpaceName] = useState("");
-  const [spaces, setSpaces] = useState<Space[] | null>(null);
-  const [loading, setIsLoading] = useState(false);
+  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);//isCreateSpaceOpen: A boolean state that controls the visibility of the create space dialog.
+  const [spaceName, setSpaceName] = useState("");//spaceName: The name of the space.
+  const [spaces, setSpaces] = useState<Space[] | null>(null);//spaces: An array of Space objects, each representing a space.
+  const [loading, setIsLoading] = useState(false);//loading: A boolean state that indicates whether the spaces are being loaded.
 
+  // Sends a GET request to /api/spaces and updates the spaces state.
   useEffect(() => {
     const fetchSpaces = async () => {
       setIsLoading(true);
@@ -53,6 +54,7 @@ export default function HomeView() {
     fetchSpaces();
   }, []);
 
+  //Sends a POST request with spaceName, updates the UI and shows a toast.
   const handleCreateSpace = async () => {
     setIsCreateSpaceOpen(false);
     try {
@@ -81,7 +83,7 @@ export default function HomeView() {
       toast.error(error.message || "Error Creating Space"); 
     }
   };
-
+// Deletes a space using a DELETE request with the spaceId query param.
   const handleDeleteSpace = async (spaceId: string) => {
     try {
       const response = await fetch(`/api/spaces/?spaceId=${spaceId}`, {
@@ -103,7 +105,9 @@ export default function HomeView() {
       toast.error(error.message || "Error Deleting Space"); 
     }
   };
-
+//ses useMemo to optimize rendering.
+// Shows skeleton cards when loading.
+// Shows SpacesCard components when data is ready.
   const renderSpaces = useMemo(() => {
     if (loading) {
       return (

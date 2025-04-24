@@ -5,7 +5,7 @@ import { SocketContextProvider } from "@/context/socket-context";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 //@ts-ignore
 import { type ThemeProviderProps } from "next-themes/dist/types";
-
+//core idea behind this is to wrap children with SessionProvider and SocketContextProvider
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>

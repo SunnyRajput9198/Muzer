@@ -10,7 +10,9 @@ type AppbarProps = {
 
 export default function Appbar({ isSpectator = false }: AppbarProps) {
   const session = useSession();
-
+  // Gets current user session via useSession().
+  // Shows login/logout buttons based on whether the user is signed in.
+  // If isSpectator is true, shows "Muzer (Spectator Mode)", else just "Muzer".
   return (
     <div>
       <div className="flex justify-between px-20 py-4 bg-gray-900 text-white">

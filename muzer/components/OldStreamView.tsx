@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronUp, ChevronDown, Share2, Play, Trash2, X, MessageCircle, Instagram, Twitter} from "lucide-react";
+import { ChevronUp, ChevronDown, Share2, Play, Trash2, X, MessageCircle, Instagram, Twitter } from "lucide-react";
 import { toast } from "sonner";
-import  Appbar  from "./Appbar";
+import Appbar from "./Appbar";
 import LiteYouTubeEmbed from "react-lite-youtube-embed";
 import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 import { YT_REGEX } from "../lib/utils";
@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
-
+//This code is for a streaming interface that allows users to share and manage YouTube videos in a "queue" for playback, 
+// similar to a music player queue. The stream interface supports functionality like adding YouTube videos,
+//  upvoting/downvoting them, sharing the stream via social media, removing songs, and emptying the queue.
+//  It integrates several React features and components, such as state management, hooks, and API interactions. Let's break it down step by step:
 
 interface Video {
   id: string;
@@ -37,9 +40,12 @@ interface Video {
   userId: string;
   upvotes: number;
   haveUpvoted: boolean;
-  spaceId:string
+  spaceId: string
 }
-
+// Omit<Session, "user">
+// This means:
+// "Take everything from the Session type except the user field."
+// So you remove the user field from the original Session type.
 interface CustomSession extends Omit<Session, "user"> {
   user: {
     id: string;
@@ -58,19 +64,21 @@ export default function StreamView({
 }: {
   creatorId: string;
   playVideo: boolean;
-  spaceId:string;
+  spaceId: string;
 }) {
-  const [inputLink, setInputLink] = useState("");
-  const [queue, setQueue] = useState<Video[]>([]);
-  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [playNextLoader, setPlayNextLoader] = useState(false);
-  const videoPlayerRef = useRef<HTMLDivElement>(null);
-  const [isCreator, setIsCreator] = useState(false);
-  const [isEmptyQueueDialogOpen, setIsEmptyQueueDialogOpen] = useState(false);
-  const [spaceName,setSpaceName]=useState("")
-  const [isOpen, setIsOpen] = useState(false);
+  const [inputLink, setInputLink] = useState("");//inputLink: Tracks the YouTube link entered by the user to add a video to the queue.
+  const [queue, setQueue] = useState<Video[]>([]);//queue: Holds the list of YouTube videos in the queue.
+  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);//currentVideo: Stores the video that is currently being played
+  const [loading, setLoading] = useState(false);//loading: A boolean state that indicates whether the video is loading.
+  const [playNextLoader, setPlayNextLoader] = useState(false);//playNextLoader: A boolean state that indicates whether the next video is loading.
+  const videoPlayerRef = useRef<HTMLDivElement>(null);//videoPlayerRef: A reference to the video player element.
+  const [isCreator, setIsCreator] = useState(false);//isCreator: A boolean state that indicates whether the user is the creator of the space.
+  const [isEmptyQueueDialogOpen, setIsEmptyQueueDialogOpen] = useState(false);//isEmptyQueueDialogOpen: A boolean state that controls the visibility of the empty queue dialog.
+  const [spaceName, setSpaceName] = useState("")//spaceName: The name of the space.
+  const [isOpen, setIsOpen] = useState(false);//isOpen: A boolean state that controls the visibility of the dropdown menu.
 
+  //refreshStreams: Fetches the current streams (videos) from the server and updates the queue.
+  //  It also checks if the user is the creator and updates the space name.
   async function refreshStreams() {
     try {
       const res = await fetch(`/api/streams/?spaceId=${spaceId}`, {
@@ -94,7 +102,7 @@ export default function StreamView({
         return json.activeStream?.stream || null;
       });
 
-   
+
       setIsCreator(json.isCreator);
       setSpaceName(json.spaceName)
     } catch (error) {
@@ -103,7 +111,7 @@ export default function StreamView({
       setCurrentVideo(null);
     }
   }
-
+  //useEffect (on component mount): Automatically fetches stream data and sets up a polling interval (setInterval) to refresh streams every 10 seconds
   useEffect(() => {
     refreshStreams();
     const interval = setInterval(refreshStreams, REFRESH_INTERVAL_MS);
@@ -129,6 +137,7 @@ export default function StreamView({
     };
   }, [currentVideo, videoPlayerRef]);
 
+  //handleSubmit: Handles the form submission to add a YouTube link to the queue. It validates the URL and sends a POST request to add the video.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputLink.trim()) {
@@ -149,7 +158,7 @@ export default function StreamView({
         body: JSON.stringify({
           creatorId,
           url: inputLink,
-          spaceId:spaceId
+          spaceId: spaceId
         }),
       });
       const data = await res.json();
@@ -169,17 +178,17 @@ export default function StreamView({
       setLoading(false);
     }
   };
-
+  //handleVote: Allows the user to upvote or downvote a video in the queue, and updates the list accordingly.
   const handleVote = (id: string, isUpvote: boolean) => {
     setQueue(
       queue
         .map((video) =>
           video.id === id
             ? {
-                ...video,
-                upvotes: isUpvote ? video.upvotes + 1 : video.upvotes - 1,
-                haveUpvoted: !video.haveUpvoted,
-              }
+              ...video,
+              upvotes: isUpvote ? video.upvotes + 1 : video.upvotes - 1,
+              haveUpvoted: !video.haveUpvoted,
+            }
             : video,
         )
         .sort((a, b) => b.upvotes - a.upvotes),
@@ -189,10 +198,11 @@ export default function StreamView({
       method: "POST",
       body: JSON.stringify({
         streamId: id,
-        spaceId:spaceId
+        spaceId: spaceId
       }),
     });
   };
+  //playNext: Moves to the next video in the queue, removing the current one, and updating the UI.
 
   const playNext = async () => {
     if (queue.length > 0) {
@@ -211,7 +221,7 @@ export default function StreamView({
       }
     }
   };
-
+  //handleShare: Handles the sharing functionality for the current video. It takes a platform as a parameter and generates a shareable link based on the current space ID.
   const handleShare = (platform: 'whatsapp' | 'twitter' | 'instagram' | 'clipboard') => {
     const shareableLink = `${window.location.hostname}/spaces/${spaceId}`
 
@@ -242,17 +252,17 @@ export default function StreamView({
       window.open(url, '_blank')
     }
   }
-
+  //emptyQueue: Clears the queue and removes all videos from the queue.
   const emptyQueue = async () => {
     try {
       const res = await fetch("/api/streams/empty-queue", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
-          },
+        },
         body: JSON.stringify({
-          spaceId:spaceId
-      })
+          spaceId: spaceId
+        })
       });
       const data = await res.json();
       if (res.ok) {
@@ -267,7 +277,7 @@ export default function StreamView({
       toast.error("An error occurred while emptying the queue");
     }
   };
-
+  //removeSong: Removes a specific song from the queue. This function is only accessible to the creator.
   const removeSong = async (streamId: string) => {
     try {
       const res = await fetch(`/api/streams/remove?streamId=${streamId}&spaceId=${spaceId}`, {
@@ -284,12 +294,20 @@ export default function StreamView({
     }
   };
 
+  //API interactions
+  //   GET /api/streams/: Fetches the list of videos in the stream, the current active video, and whether the user is the creator.
+  // POST /api/streams/: Adds a new video (YouTube link) to the queue.
+  // POST /api/streams/upvote and /api/streams/downvote: Handle upvoting and downvoting of a video.
+  // POST /api/streams/next: Skips to the next video in the queue.
+  // POST /api/streams/empty-queue: Empties the entire queue (for the creator).
+  // DELETE /api/streams/remove: Removes a specific song from the queue.
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-200">
       <Appbar />
       <div className='mx-auto text-2xl bg-gradient-to-r rounded-lg from-indigo-600 to-violet-800 font-bold'>
-            {spaceName}
-            </div>
+        {spaceName}
+      </div>
       <div className="flex justify-center px-5 md:px-10 xl:px-20">
         <div className="grid grid-cols-1 gap-y-5 lg:gap-x-5 lg:grid-cols-5 w-screen py-5 lg:py-8">
           <div className="col-span-3 order-2 lg:order-1">
@@ -298,47 +316,49 @@ export default function StreamView({
                 Upcoming Songs
               </h2>
               <div className="flex space-x-2">
-              <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-  <DropdownMenuTrigger asChild>
-    <Button onClick={() => setIsOpen(true)} className="bg-purple-700 hover:bg-purple-800 text-white">
-      <Share2 className="mr-2 h-4 w-4" /> Share
-    </Button>
-  </DropdownMenuTrigger>
+                <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button onClick={() => setIsOpen(true)} className="bg-purple-700 hover:bg-purple-800 text-white">
+                      <Share2 className="mr-2 h-4 w-4" /> Share
+                    </Button>
+                  </DropdownMenuTrigger>
 
-  <DropdownMenuContent className="w-48 sm:max-w-md">
-    <DropdownMenuLabel>Share to Social Media</DropdownMenuLabel>
-    <DropdownMenuSeparator />
-    
-    <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
-      <div className="flex items-center space-x-2">
-        <MessageCircle className="h-6 w-6 text-green-500" />
-        <span>WhatsApp</span>
-      </div>
-    </DropdownMenuItem>
-    
-    <DropdownMenuItem onClick={() => handleShare('twitter')}>
-      <div className="flex items-center space-x-2">
-        <Twitter className="h-6 w-6 text-blue-400" />
-        <span>Twitter</span>
-      </div>
-    </DropdownMenuItem>
-    
-    <DropdownMenuItem onClick={() => handleShare('instagram')}>
-      <div className="flex items-center space-x-2">
-        <Instagram className="h-6 w-6 text-pink-500" />
-        <span>Instagram</span>
-      </div>
-    </DropdownMenuItem>
+                  <DropdownMenuContent className="w-48 sm:max-w-md">
+                    <DropdownMenuLabel>Share to Social Media</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {/* his component is a part of a social media sharing feature. When a user clicks on the "Instagram" option from the dropdown menu,
+     the handleShare function will be triggered with 'instagram' as an argument. This, in turn, would handle the sharing logic,
+      typically by copying the link to the clipboard since Instagram doesn't allow direct URL sharing. */}
+                    <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="h-6 w-6 text-green-500" />
+                        <span>WhatsApp</span>
+                      </div>
+                    </DropdownMenuItem>
 
-    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleShare('twitter')}>
+                      <div className="flex items-center space-x-2">
+                        <Twitter className="h-6 w-6 text-blue-400" />
+                        <span>Twitter</span>
+                      </div>
+                    </DropdownMenuItem>
 
-    <DropdownMenuItem onClick={() => handleShare('clipboard')}>
-      <div className="flex items-center space-x-2">
-        <span>Copy Link to Clipboard</span>
-      </div>
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+                    <DropdownMenuItem onClick={() => handleShare('instagram')}>
+                      <div className="flex items-center space-x-2">
+                        <Instagram className="h-6 w-6 text-pink-500" />
+                        <span>Instagram</span>
+                      </div>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem onClick={() => handleShare('clipboard')}>
+                      <div className="flex items-center space-x-2">
+                        <span>Copy Link to Clipboard</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 {isCreator && (
                   <Button
                     onClick={() => setIsEmptyQueueDialogOpen(true)}
@@ -349,6 +369,7 @@ export default function StreamView({
                 )}
               </div>
             </div>
+            {/* if the queue is empty, it shows a message saying "No videos in queue". If there are videos, it displays them with upvote/downvote buttons and an option to remove the video if the user is the creator. */}
             {queue.length === 0 ? (
               <Card className="bg-gray-800 border-gray-700 shadow-lg">
                 <CardContent className="p-4 flex flex-col md:flex-row md:space-x-3">
@@ -366,8 +387,8 @@ export default function StreamView({
                   >
                     <CardContent className="p-4 flex flex-col md:flex-row md:space-x-3">
                       <Image
-                      width={160}
-                      height={160}
+                        width={160}
+                        height={160}
                         src={video.smallImg}
                         alt={`Thumbnail for ${video.title}`}
                         className="md:w-40 mb-5 md:mb-0 object-cover rounded-md"
@@ -418,6 +439,12 @@ export default function StreamView({
               </div>
             )}
           </div>
+          {/* The handleVote function allows users to upvote or downvote videos in the queue. */}
+          {/* Add Video: Users can add a video to the queue by pasting a YouTube link, and the video preview is shown once the link is valid. */}
+          {/* The component has two main sections:
+Add a Song: Allows users to paste a YouTube link, preview the video, and add it to a queue.
+Now Playing: Displays the currently playing video, a thumbnail of it if not playing, and a button to play the next video.
+Dynamic Behavior: The layout adjusts based on the states currentVideo, playVideo, and loading. It ensures a smooth user experience by updating content dynamically (e.g., showing loading states and video previews). */}
           <div className="col-span-2 order-1 lg:order-2">
             <div className="space-y-4">
               <Card className="bg-gray-800 border-gray-700 shadow-lg">

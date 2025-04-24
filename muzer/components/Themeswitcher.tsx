@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
 
 export function ThemeSwitcher() {
+  //useTheme: This hook comes from the next-themes library and is used to access and modify the current theme (light or dark).
   const { theme, setTheme } = useTheme();
   const [isMounted, setIsMounted] = useState(false);
   const isDark = theme === "dark";
