@@ -4,9 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev:ws": "ts-node src/app.ts",
-    "dev:redis": "redis-server",
-    "dev": "concurrently \"npm run dev:ws\" \"npm run dev:redis\""
+    "dev": "ts-node src/app.ts"
+  
   },
   "keywords": [],
   "author": "",
@@ -19,6 +18,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "youtube-search-api": "^1.2.2"
   }
 }

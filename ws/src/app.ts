@@ -4,12 +4,12 @@ import http from "http";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import { sendError } from "./utils";
-// import os from "os";
+// import os from "os"; // Not used, so commented out
 
-import { RoomManager } from "./StreamManager";
+import { RoomManager } from "./StreamManager"; // Assuming this is the correct path
 
 dotenv.config();
-const cors = 1; // os.cpus().length  // for vertical scaling
+const cors = 1; // os.cpus().length  // for vertical scaling.  Adjust as needed.
 
 if (cluster.isPrimary) {
   for (let i = 0; i < cors; i++) {
@@ -31,7 +31,6 @@ type Data = {
   vote: "upvote" | "downvote";
   streamId: string;
 };
-
 
 function createHttpServer() {
   return http.createServer((req, res) => {
@@ -100,14 +99,14 @@ async function processUserAction(type: string, data: Data) {
       break;
 
     case "play-next":
-      await RoomManager.getInstance().queue.add("play-next", {
+      await RoomManager.getInstance().queue.add("play-next", { // Keep BullMQ
         spaceId: data.spaceId,
         userId: data.userId,
       });
       break;
 
     case "remove-song":
-      await RoomManager.getInstance().queue.add("remove-song", {
+      await RoomManager.getInstance().queue.add("remove-song", { // Keep BullMQ
         ...data,
         spaceId: data.spaceId,
         userId: data.userId,
@@ -115,7 +114,7 @@ async function processUserAction(type: string, data: Data) {
       break;
 
     case "empty-queue":
-      await RoomManager.getInstance().queue.add("empty-queue", {
+      await RoomManager.getInstance().queue.add("empty-queue", {  // Keep BullMQ
         ...data,
         spaceId: data.spaceId,
         userId: data.userId,
@@ -149,10 +148,24 @@ async function handleUserAction(ws: WebSocket, type: string, data: Data) {
 async function main() {
   const server = createHttpServer();
   const wss = new WebSocketServer({ server });
-  await RoomManager.getInstance().initRedisClient();
+  // Removed initRedisClient
+  wss.on("connection", (ws, req) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:3000", // Your Next.js frontend URL
+      "http://localhost:8080", // Potentially for testing
+      // Add any other allowed origins here
+    ];
 
-  wss.on("connection", (ws) => handleConnection(ws));
+    if (origin && !allowedOrigins.includes(origin)) {
+      console.warn(`Connection rejected from origin: ${origin}`);
+      ws.close(); // Reject the connection if the origin is not allowed
+      return;
+    }
 
+    console.log("Client connected from:", origin);
+    handleConnection(ws);
+  });
   const PORT = process.env.PORT ?? 8080;
   server.listen(PORT, () => {
     console.log(`${process.pid}: WebSocket server is running on ${PORT}`);

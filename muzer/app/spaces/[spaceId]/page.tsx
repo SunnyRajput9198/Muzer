@@ -2,97 +2,86 @@
 
 import { useEffect, useState } from "react";
 import { useSocket } from "@/context/socket-context";
-import jwt from "jsonwebtoken";
 import StreamView from "@/components/StreamView";
 import ErrorScreen from "@/components/ErrorScreen";
 import LoadingScreen from "@/components/LoadingScreen";
-import { useRouter, useSearchParams } from "next/navigation"; // Import useSearchParams
-import { useSearchParams as useNextSearchParams } from "next/navigation"; // For accessing params dynamically
+import { useRouter } from "next/navigation";
 
-export default function Component() {
-  const searchParams = useNextSearchParams(); // Get params dynamically
-  const spaceId = searchParams?.get("spaceId"); // Access spaceId safely from the params
-  const { socket, user, loading, setUser, connectionError } = useSocket();
-  const [creatorId, setCreatorId] = useState<string>();
-  const [loading1, setLoading1] = useState(true);
+export default function Page({ params }: { params: { spaceId: string } }) {
+  const { spaceId } = params;
   const router = useRouter();
 
-  // Log to see the params dynamically
-  console.log(spaceId);
+  const { user, setUser, loading, sendMessage, connectionError } = useSocket();
 
+  const [creatorId, setCreatorId] = useState<string | null>(null);
+  const [loadingSpace, setLoadingSpace] = useState(true);
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false); // Track if user joined
+
+  // Fetch host/creator ID
   useEffect(() => {
-    if (spaceId) {
-      async function fetchHostId() {
-        try {
-          const response = await fetch(`/api/spaces/?spaceId=${spaceId}`, {
-            method: "GET",
-          });
-          const data = await response.json();
-          if (!response.ok || !data.success) {
-            throw new Error(data.message || "Failed to retrieve space's host id");
-          }
-          setCreatorId(data.hostId);
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setLoading1(false);
-        }
+    const fetchHostId = async () => {
+      try {
+        const res = await fetch(`/api/spaces/?spaceId=${spaceId}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) throw new Error(data.message || "Failed to fetch host ID");
+
+        setCreatorId(data.hostId);
+      } catch (err) {
+        console.error("Error fetching host ID:", err);
+      } finally {
+        setLoadingSpace(false);
       }
-      fetchHostId();
-    }
+    };
+
+    fetchHostId();
   }, [spaceId]);
 
+  // Generate token securely via API & join room
   useEffect(() => {
-    if (user && socket && creatorId) {
-      const token =
-        user.token ||
-        jwt.sign(
-          {
-            creatorId: creatorId,
-            userId: user?.id,
-          },
-          process.env.NEXT_PUBLIC_SECRET || "",
-          {
-            expiresIn: "24h",
-          }
-        );
+    const joinRoom = async () => {
+      if (!user?.id || !creatorId || !user?.token || hasJoinedRoom) return;
 
-      socket?.send(
-        JSON.stringify({
-          type: "join-room",
-          data: {
-            token,
-            spaceId,
-          },
-        })
-      );
-      if (!user.token) {
+      try {
+        const res = await fetch("/api/generate-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorId,
+            userId: user.id,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) throw new Error(data.message || "Token generation failed");
+
+        const token = data.token;
         setUser({ ...user, token });
+        sendMessage("join-room", { token, spaceId });
+        setHasJoinedRoom(true); // Mark as joined
+      } catch (error) {
+        console.error("Error generating token or joining room:", error);
       }
-    }
-  }, [user, spaceId, creatorId, socket]);
+    };
 
-  if (connectionError) {
-    return <ErrorScreen>Cannot connect to socket server</ErrorScreen>;
-  }
+    joinRoom();
+  }, [user?.id, creatorId, spaceId, sendMessage, user?.token, setUser, hasJoinedRoom]);
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  // UI states
+  if (connectionError) return <ErrorScreen>Unable to connect to WebSocket server.</ErrorScreen>;
+  if (loading || loadingSpace) return <LoadingScreen />;
+  if (!user) return <ErrorScreen>Please log in.</ErrorScreen>;
 
-  if (!user) {
-    return <ErrorScreen>Please Log in....</ErrorScreen>;
-  }
-
-  if (loading1) {
-    return <LoadingScreen />;
-  }
-
-  if (creatorId === user.id) {
+  // Redirect creator to dashboard
+  if (user.id === creatorId) {
     router.push(`/dashboard/${spaceId}`);
+    return null;
   }
 
-  return <StreamView creatorId={creatorId as string} playVideo={false} spaceId={spaceId as string} />;
+  return (
+    <StreamView creatorId={creatorId!} playVideo={false} spaceId={spaceId} />
+  );
 }
 
 export const dynamic = "auto";
