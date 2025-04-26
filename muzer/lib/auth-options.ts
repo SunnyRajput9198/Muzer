@@ -90,7 +90,7 @@ export const authOptions = {
           if (error instanceof PrismaClientInitializationError) {
             throw new Error("Internal server error");
           }
-          console.log(error);
+          // console.log(error);
           throw error;
         }
 

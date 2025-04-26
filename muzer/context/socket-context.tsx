@@ -61,7 +61,7 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
     };
 
     ws.onerror = (error) => {
-      console.error("WebSocket error encountered:", error);
+      // console.error("WebSocket error encountered:", error);
       console.log(`WebSocket readyState: ${ws.readyState}`);
       setConnectionError(true);
       setLoading(false);

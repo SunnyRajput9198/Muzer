@@ -25,6 +25,7 @@ export default function Component({ params }: { params: Promise<{ spaceId: strin
       try {
         const response = await fetch(`/api/spaces/?spaceId=${spaceId}`);
         const data = await response.json();
+        console.log("data",data)
 
         if (!response.ok || !data.success) {
           throw new Error(data.message || "Failed to retrieve space's host id");
@@ -40,12 +41,21 @@ export default function Component({ params }: { params: Promise<{ spaceId: strin
 
     fetchHostId();
   }, [spaceId]);
-
+console.log("creatorId",creatorId)
+console.log("user",user)
+console.log("socket",socket)
   // Generate token server-side and send join-room over socket
   useEffect(() => {
     if (user && socket && creatorId) {
       const joinRoom = async () => {
         try {
+          console.log("Making POST request to /api/generate-token with:", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ creatorId, userId: user.id }),
+          });
           const res = await fetch("/api/generate-token", {
             method: "POST",
             headers: {
@@ -85,7 +95,7 @@ export default function Component({ params }: { params: Promise<{ spaceId: strin
 
       joinRoom();
     }
-  }, [user, spaceId, creatorId, socket]);
+  }, [spaceId, creatorId, socket]);
 
   if (connectionError) return <ErrorScreen>Cannot connect to socket server</ErrorScreen>;
   if (loading || loading1) return <LoadingScreen />;
