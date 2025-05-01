@@ -1,103 +1,54 @@
 import WebSocket from "ws";
-import { PrismaClient } from "@prisma/client";
 //@ts-ignore
 import youtubesearchapi from "youtube-search-api";
-import { Job, Queue, Worker } from "bullmq";
+import { PrismaClient } from "@prisma/client";
 import { getVideoId, isValidYoutubeURL } from "./utils";
 
 const TIME_SPAN_FOR_VOTE = 1200000; // 20min
 const TIME_SPAN_FOR_QUEUE = 1200000; // 20min
 const TIME_SPAN_FOR_REPEAT = 3600000;
 const MAX_QUEUE_LENGTH = 20;
-//Client joins a room:
-// Initiates WebSocket connection.
-// Server validates and joins the corresponding Redis channel.
-// User adds a video to the queue:
-// Sends video ID to WebSocket server.
-// WebSocket server validates, stores via Prisma, adds job to BullMQ.
-// Redis publishes to all clients in the room to update the queue.
-// Sync video state (play/pause/seek):
-// WebSocket events are broadcast via Redis channels.
-// All clients stay in sync.
-// Job Queue (BullMQ):
-// Handles future play scheduling, skip after duration, etc.
-// Worker listens and notifies Redis/WebSocket for execution.
-// Database via Prisma:
-// Stores room state, current queue, past history.
-
-const connection = {
-  password: process.env.REDIS_PASSWORD || "",
-  host: process.env.REDIS_HOST || "",
-  port: parseInt(process.env.REDIS_PORT || "") || 6379,
-};
 
 export class RoomManager {
   private static instance: RoomManager;
   public spaces: Map<string, Space>;
   public users: Map<string, User>;
   public prisma: PrismaClient;
-  public queue: Queue;
-  public worker: Worker;
   public wstoSpace: Map<WebSocket, string>;
+  private lastVoted: Map<string, Map<string, number>>; // spaceId -> userId -> timestamp
+  private queueLength: Map<string, number>; // spaceId -> length
+  private lastAdded: Map<string, Map<string, number>>; // spaceId -> userId -> timestamp
+  private blockedSongs: Map<string, Set<string>>; // spaceId -> Set of URLs
 
   private constructor() {
     this.spaces = new Map();
     this.users = new Map();
     this.prisma = new PrismaClient();
-    this.queue = new Queue(process.pid.toString(), {
-      connection,
-    });
-    this.worker = new Worker(process.pid.toString(), this.processJob, {
-      connection,
-    });
     this.wstoSpace = new Map();
+    this.lastVoted = new Map();
+    this.queueLength = new Map();
+    this.lastAdded = new Map();
+    this.blockedSongs = new Map();
   }
 
   static getInstance() {
     if (!RoomManager.instance) {
       RoomManager.instance = new RoomManager();
     }
-
     return RoomManager.instance;
   }
 
-  async processJob(job: Job) {
-    const { data, name } = job;
-    if (name === "cast-vote") {
-      await RoomManager.getInstance().adminCastVote(
-        data.creatorId,
-        data.userId,
-        data.streamId,
-        data.vote,
-        data.spaceId
-      );
-    } else if (name === "add-to-queue") {
-      await RoomManager.getInstance().adminAddStreamHandler(
-        data.spaceId,
-        data.userId,
-        data.url,
-        data.existingActiveStream
-      );
-    } else if (name === "play-next") {
-      await RoomManager.getInstance().adminPlayNext(data.spaceId, data.userId);
-    } else if (name === "remove-song") {
-      await RoomManager.getInstance().adminRemoveSong(
-        data.spaceId,
-        data.userId,
-        data.streamId
-      );
-    } else if (name === "empty-queue") {
-      await RoomManager.getInstance().adminEmptyQueue(data.spaceId);
-    }
-  }
-
-  async createRoom(spaceId: string) {
-    console.log(process.pid + ": createRoom: ", { spaceId });
+  async createRoom(spaceId: string, creatorId: string) {
+    console.log(process.pid + ": createRoom: ", { spaceId, creatorId });
     if (!this.spaces.has(spaceId)) {
       this.spaces.set(spaceId, {
         users: new Map<string, User>(),
-        creatorId: "",
+        creatorId: creatorId,
       });
+      this.lastVoted.set(spaceId, new Map());
+      this.queueLength.set(spaceId, 0);
+      this.lastAdded.set(spaceId, new Map());
+      this.blockedSongs.set(spaceId, new Set());
     }
   }
 
@@ -129,7 +80,7 @@ export class RoomManager {
     let user = this.users.get(userId);
 
     if (!space) {
-      await this.createRoom(spaceId);
+      await this.createRoom(spaceId, creatorId);
       space = this.spaces.get(spaceId);
     }
 
@@ -183,6 +134,7 @@ export class RoomManager {
           playedTs: new Date(),
         },
       });
+      this.queueLength.set(spaceId, 0);
       this.publishEmptyQueue(spaceId);
     }
   }
@@ -217,7 +169,6 @@ export class RoomManager {
           spaceId: spaceId,
         },
       });
-
       this.publishRemoveSong(spaceId, streamId);
     } else {
       user?.ws.forEach((ws) => {
@@ -402,6 +353,9 @@ export class RoomManager {
       }),
     ]);
 
+    const currentQueueLength = this.queueLength.get(spaceId) || 1;
+    this.queueLength.set(spaceId, currentQueueLength - 1);
+
     this.publishPlayNext(spaceId);
   }
 
@@ -456,7 +410,10 @@ export class RoomManager {
         },
       });
     }
-
+    const spaceVotes = this.lastVoted.get(spaceId);
+    if (spaceVotes) {
+      spaceVotes.set(userId, new Date().getTime());
+    }
     this.publishNewVote(spaceId, streamId, vote as "upvote" | "downvote", userId);
   }
 
@@ -476,16 +433,25 @@ export class RoomManager {
       return;
     }
     if (!isCreator) {
-      // Removed Redis logic for last voted check
+      const spaceVotes = this.lastVoted.get(spaceId);
+      const lastVotedTime = spaceVotes?.get(userId);
+
+      if (lastVotedTime && new Date().getTime() - lastVotedTime < TIME_SPAN_FOR_VOTE) {
+        currentUser?.ws.forEach((ws) => {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: {
+                message: "You can vote after 20 mins",
+              },
+            })
+          );
+        });
+        return;
+      }
     }
 
-    await this.queue.add("cast-vote", {
-      creatorId,
-      userId,
-      streamId,
-      vote,
-      spaceId: spaceId,
-    });
+    await this.adminCastVote(creatorId as string, userId, streamId, vote, spaceId);
   }
 
   publishNewStream(spaceId: string, data: any) {
@@ -517,13 +483,13 @@ export class RoomManager {
     console.log("adminAddStreamHandler", spaceId);
     const room = this.spaces.get(spaceId);
     const currentUser = this.users.get(userId);
-  
+
     if (!room || typeof existingActiveStream !== "number") {
       return;
     }
-  
+
     const extractedId = getVideoId(url);
-  
+
     if (!extractedId) {
       currentUser?.ws.forEach((ws) => {
         ws.send(
@@ -535,9 +501,11 @@ export class RoomManager {
       });
       return;
     }
-  
+
+    this.queueLength.set(spaceId, existingActiveStream + 1);
+
     const res = await youtubesearchapi.GetVideoDetails(extractedId);
-  
+
     if (res.thumbnail) {
       const thumbnails = res.thumbnail.thumbnails;
       thumbnails.sort((a: { width: number }, b: { width: number }) =>
@@ -552,22 +520,28 @@ export class RoomManager {
           type: "Youtube",
           addedBy: userId,
           title: res.title ?? "Cant find video",
-          // smallImg: video.thumbnails.medium.url,
-          // bigImg: video.thumbnails.high.url,
           smallImg:
             (thumbnails.length > 1
               ? thumbnails[thumbnails.length - 2].url
-              : thumbnails[thumbnails.length - 1].url) ??
-            "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
+            : thumbnails[thumbnails.length - 1].url) ??
+          "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
           bigImg:
             thumbnails[thumbnails.length - 1].url ??
             "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
           spaceId: spaceId,
         },
       });
-  
-      // Removed Redis logic for tracking added time and preventing repeats
-  
+
+      const spaceBlockedSongs = this.blockedSongs.get(spaceId);
+      if (spaceBlockedSongs) {
+        spaceBlockedSongs.add(url);
+      }
+
+      const spaceLastAdded = this.lastAdded.get(spaceId);
+      if (spaceLastAdded) {
+        spaceLastAdded.set(userId, new Date().getTime());
+      }
+
       this.publishNewStream(spaceId, {
         ...stream,
         hasUpvoted: false,
@@ -586,20 +560,20 @@ export class RoomManager {
       });
     }
   }
-  
+
   async addToQueue(spaceId: string, currentUserId: string, url: string) {
     console.log(process.pid + ": addToQueue");
-  
+
     const space = this.spaces.get(spaceId);
     const currentUser = this.users.get(currentUserId);
     const creatorId = this.spaces.get(spaceId)?.creatorId;
     const isCreator = currentUserId === creatorId;
-  
+
     if (!space || !currentUser) {
       console.log("433: Room or User not defined");
       return;
     }
-  
+
     if (!isValidYoutubeURL(url)) {
       currentUser?.ws.forEach((ws) => {
         ws.send(
@@ -611,16 +585,42 @@ export class RoomManager {
       });
       return;
     }
-  
-    let previousQueueLength = await this.prisma.stream.count({
-      where: {
-        spaceId: spaceId,
-        played: false,
-      },
-    });
-  
+
+    let previousQueueLength = this.queueLength.get(spaceId) || 0;
+
     if (!isCreator) {
-      // Removed Redis logic for rate limiting and preventing repeats
+      const spaceLastAdded = this.lastAdded.get(spaceId);
+      const lastAddedTime = spaceLastAdded?.get(currentUserId);
+
+      if (lastAddedTime && new Date().getTime() - lastAddedTime < TIME_SPAN_FOR_QUEUE) {
+        currentUser.ws.forEach((ws) => {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: {
+                message: "You can add again after 20 min.",
+              },
+            })
+          );
+        });
+        return;
+      }
+
+      const spaceBlockedSongs = this.blockedSongs.get(spaceId);
+      if (spaceBlockedSongs?.has(url)) {
+        currentUser.ws.forEach((ws) => {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: {
+                message: "This song is blocked for 1 hour",
+              },
+            })
+          );
+        });
+        return;
+      }
+
       if (previousQueueLength >= MAX_QUEUE_LENGTH) {
         currentUser.ws.forEach((ws) => {
           ws.send(
@@ -635,22 +635,17 @@ export class RoomManager {
         return;
       }
     }
-  
-    await this.queue.add("add-to-queue", {
-      spaceId,
-      userId: currentUser.userId,
-      url,
-      existingActiveStream: previousQueueLength,
-    });
+
+    await this.adminAddStreamHandler(spaceId, currentUser.userId, url, previousQueueLength);
   }
-  
+
   disconnect(ws: WebSocket) {
     console.log(process.pid + ": disconnect");
     let userId: string | null = null;
     const spaceId = this.wstoSpace.get(ws);
     this.users.forEach((user, id) => {
       const wsIndex = user.ws.indexOf(ws);
-  
+
       if (wsIndex !== -1) {
         userId = id;
         user.ws.splice(wsIndex, 1);
@@ -659,7 +654,7 @@ export class RoomManager {
         this.users.delete(id);
       }
     });
-  
+
     if (userId && spaceId) {
       const space = this.spaces.get(spaceId);
       if (space) {
@@ -673,15 +668,15 @@ export class RoomManager {
       }
     }
   }
-  }
-  
-  type User = {
+}
+
+type User = {
   userId: string;
   ws: WebSocket[];
   token: string;
-  };
-  
-  type Space = {
+};
+
+type Space = {
   creatorId: string;
   users: Map<String, User>;
-  };
+};

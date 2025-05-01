@@ -63,6 +63,7 @@ async function handleJoinRoom(ws: WebSocket, data: Data) {
     data.token,
     process.env.NEXTAUTH_SECRET as string,
     (err: any, decoded: any) => {
+      console.log("handleJoinRoom", decoded.userId)///;
       if (err) {
         console.error(err);
         sendError(ws, "Token verification failed");
@@ -138,6 +139,7 @@ async function handleUserAction(ws: WebSocket, type: string, data: Data) {
   const user = RoomManager.getInstance().users.get(data.userId);
 
   if (user) {
+    console.log("handleUserAction", data.userId);
     data.userId = user.userId;
     await processUserAction(type, data);
   } else {
