@@ -19,6 +19,7 @@ export class RoomManager {
   private queueLength: Map<string, number>; // spaceId -> length
   private lastAdded: Map<string, Map<string, number>>; // spaceId -> userId -> timestamp
   private blockedSongs: Map<string, Set<string>>; // spaceId -> Set of URLs
+  private actionQueue: any[] = []; // Example: simple array for the queue
 
   private constructor() {
     this.spaces = new Map();
@@ -49,21 +50,6 @@ export class RoomManager {
       this.queueLength.set(spaceId, 0);
       this.lastAdded.set(spaceId, new Map());
       this.blockedSongs.set(spaceId, new Set());
-    }
-  }
-
-  async addUser(userId: string, ws: WebSocket, token: string) {
-    let user = this.users.get(userId);
-    if (!user) {
-      this.users.set(userId, {
-        userId,
-        ws: [ws],
-        token,
-      });
-    } else {
-      if (!user.ws.some((existingWs) => existingWs === ws)) {
-        user.ws.push(ws);
-      }
     }
   }
 
@@ -104,6 +90,37 @@ export class RoomManager {
       });
     }
   }
+  async addUser(userId: string, ws: WebSocket, token: string) {
+    let user = this.users.get(userId);
+    if (!user) {
+      this.users.set(userId, {
+        userId,
+        ws: [ws],
+        token,
+      });
+    } else {
+      if (!user.ws.some((existingWs) => existingWs === ws)) {
+        user.ws.push(ws);
+      }
+    }
+  }
+  private async processQueue() {
+    while (this.actionQueue.length > 0) {
+      const action = this.actionQueue.shift();
+      switch (action?.type) {
+        case 'play-next':
+          await this.adminPlayNext(action.spaceId, action.userId);
+          break;
+        case 'remove-song':
+          await this.adminRemoveSong(action.data.spaceId, action.data.userId, action.data.streamId);
+          break;
+        case 'empty-queue':
+          await this.adminEmptyQueue(action.data.spaceId);
+          break;
+        // Add other cases as needed
+      }
+    }
+  }
 
   publishEmptyQueue(spaceId: string) {
     const space = this.spaces.get(spaceId);
@@ -138,6 +155,22 @@ export class RoomManager {
       this.publishEmptyQueue(spaceId);
     }
   }
+
+  enqueuePlayNext(spaceId: string, userId: string) {
+    this.actionQueue.push({ type: 'play-next', spaceId, userId });
+    this.processQueue(); // Or trigger processing at a different point
+  }
+
+  enqueueRemoveSong(data: any) {
+    this.actionQueue.push({ type: 'remove-song', data });
+    this.processQueue();
+  }
+
+  enqueueEmptyQueue(data: any) {
+    this.actionQueue.push({ type: 'empty-queue', data });
+    this.processQueue();
+  }
+
 
   publishRemoveSong(spaceId: string, streamId: string) {
     console.log("publishRemoveSong");

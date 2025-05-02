@@ -81,6 +81,7 @@ console.log("socket",socket)
               data: {
                 token,
                 spaceId,
+                userId: user.id
               },
             })
           );

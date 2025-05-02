@@ -64,7 +64,7 @@ export default function Page({ params }: { params: { spaceId: string } }) {
 
                 const token = data.token;
                 setUser({ ...user, token }); // Update user object with the token
-                sendMessage("join-room", { token, spaceId });
+                sendMessage("join-room", { token, spaceId,userId: user.id }); // Send join-room message to server
                 setHasJoinedRoom(true); // Mark as joined
             } catch (error: any) {
                 console.error("Error generating token or joining room:", error);

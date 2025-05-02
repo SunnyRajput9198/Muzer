@@ -30,6 +30,7 @@ type Data = {
   url: string;
   vote: "upvote" | "downvote";
   streamId: string;
+  creatorId: string;
 };
 
 function createHttpServer() {
@@ -41,9 +42,9 @@ function createHttpServer() {
 }
 
 async function handleConnection(ws: WebSocket) {
-  ws.on("message", async (raw: { toString: () => string }) => {
+  ws.on("message", async (raw:Buffer) => {
     const { type, data } = JSON.parse(raw.toString()) || {};
-
+    console.log("Received message:", { type, data }); // Log the incoming data
     switch (type) {
       case "join-room":
         await handleJoinRoom(ws, data);
@@ -59,19 +60,20 @@ async function handleConnection(ws: WebSocket) {
 }
 
 async function handleJoinRoom(ws: WebSocket, data: Data) {
+  console.log("data.token", data.token);
   jwt.verify(
     data.token,
     process.env.NEXTAUTH_SECRET as string,
     (err: any, decoded: any) => {
-      console.log("handleJoinRoom", decoded.userId)///;
       if (err) {
         console.error(err);
         sendError(ws, "Token verification failed");
       } else {
+        console.log("Decoded Token:", decoded); // Log the entire decoded object
         RoomManager.getInstance().joinRoom(
           data.spaceId,
-          decoded.creatorId,
-          decoded.userId,
+          decoded.creatorId, // Ensure 'creatorId' exists
+          decoded.userId,    // Check if 'userId' is here
           ws,
           data.token
         );
@@ -100,26 +102,15 @@ async function processUserAction(type: string, data: Data) {
       break;
 
     case "play-next":
-      await RoomManager.getInstance().queue.add("play-next", { // Keep BullMQ
-        spaceId: data.spaceId,
-        userId: data.userId,
-      });
+      RoomManager.getInstance().enqueuePlayNext(data.spaceId, data.userId);
       break;
 
     case "remove-song":
-      await RoomManager.getInstance().queue.add("remove-song", { // Keep BullMQ
-        ...data,
-        spaceId: data.spaceId,
-        userId: data.userId,
-      });
+      RoomManager.getInstance().enqueueRemoveSong(data);
       break;
 
     case "empty-queue":
-      await RoomManager.getInstance().queue.add("empty-queue", {  // Keep BullMQ
-        ...data,
-        spaceId: data.spaceId,
-        userId: data.userId,
-      });
+      RoomManager.getInstance().enqueueEmptyQueue(data);
       break;
 
     case "pay-and-play-next":
@@ -140,7 +131,7 @@ async function handleUserAction(ws: WebSocket, type: string, data: Data) {
 
   if (user) {
     console.log("handleUserAction", data.userId);
-    data.userId = user.userId;
+    data.userId ;
     await processUserAction(type, data);
   } else {
     sendError(ws, "You are unauthorized to perform this action");
