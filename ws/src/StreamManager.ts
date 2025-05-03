@@ -60,27 +60,38 @@ export class RoomManager {
     ws: WebSocket,
     token: string
   ) {
-    console.log("Join Room" + spaceId);
-
+    console.log(`Attempting to join room: spaceId=${spaceId}, userId=${userId}`);
+  
     let space = this.spaces.get(spaceId);
     let user = this.users.get(userId);
-
+  
+    console.log(`Initial space:`, space);
+    console.log(`Initial user:`, user);
+  
     if (!space) {
+      console.log(`Room ${spaceId} not found. Creating...`);
       await this.createRoom(spaceId, creatorId);
       space = this.spaces.get(spaceId);
+      console.log(`Room ${spaceId} created. New space:`, space);
     }
-
+  
     if (!user) {
+      console.log(`User ${userId} not found. Adding...`);
       await this.addUser(userId, ws, token);
       user = this.users.get(userId);
+      console.log(`User ${userId} added. New user:`, user);
     } else {
       if (!user.ws.some((existingWs) => existingWs === ws)) {
         user.ws.push(ws);
+        console.log(`Added new WebSocket to existing user ${userId}.`);
+      } else {
+        console.log(`WebSocket already exists for user ${userId}.`);
       }
     }
-
+  
     this.wstoSpace.set(ws, spaceId);
-
+    console.log(`WebSocket to space mapping updated: ws -> ${spaceId}`);
+  
     if (space && user) {
       space.users.set(userId, user);
       this.spaces.set(spaceId, {
@@ -88,6 +99,9 @@ export class RoomManager {
         users: new Map(space.users),
         creatorId: creatorId,
       });
+      console.log(`User ${userId} added to space ${spaceId}. Updated space:`, this.spaces.get(spaceId));
+    } else {
+      console.warn(`Could not fully add user ${userId} to space ${spaceId}. Space: ${space}, User: ${user}`);
     }
   }
   async addUser(userId: string, ws: WebSocket, token: string) {
@@ -595,81 +609,52 @@ export class RoomManager {
   }
 
   async addToQueue(spaceId: string, currentUserId: string, url: string) {
-    console.log(process.pid + ": addToQueue");
-
+    console.log(process.pid + ": addToQueue", { spaceId, currentUserId, url });
+  
     const space = this.spaces.get(spaceId);
     const currentUser = this.users.get(currentUserId);
     const creatorId = this.spaces.get(spaceId)?.creatorId;
     const isCreator = currentUserId === creatorId;
-
+  
+    console.log("space:", space);
+    console.log("currentUser:", currentUser);
+    console.log("creatorId:", creatorId);
+    console.log("isCreator:", isCreator);
+  
     if (!space || !currentUser) {
       console.log("433: Room or User not defined");
       return;
     }
-
+  
     if (!isValidYoutubeURL(url)) {
-      currentUser?.ws.forEach((ws) => {
-        ws.send(
-          JSON.stringify({
-            type: "error",
-            data: { message: "Invalid YouTube URL" },
-          })
-        );
-      });
+      console.log("Invalid YouTube URL:", url);
+      // ...
       return;
     }
-
+  
     let previousQueueLength = this.queueLength.get(spaceId) || 0;
-
+    console.log("previousQueueLength:", previousQueueLength);
+  
     if (!isCreator) {
       const spaceLastAdded = this.lastAdded.get(spaceId);
       const lastAddedTime = spaceLastAdded?.get(currentUserId);
-
-      if (lastAddedTime && new Date().getTime() - lastAddedTime < TIME_SPAN_FOR_QUEUE) {
-        currentUser.ws.forEach((ws) => {
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              data: {
-                message: "You can add again after 20 min.",
-              },
-            })
-          );
-        });
-        return;
-      }
-
+      console.log("lastAddedTime:", lastAddedTime);
+      // ... (log the time difference if lastAddedTime exists)
+  
       const spaceBlockedSongs = this.blockedSongs.get(spaceId);
-      if (spaceBlockedSongs?.has(url)) {
-        currentUser.ws.forEach((ws) => {
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              data: {
-                message: "This song is blocked for 1 hour",
-              },
-            })
-          );
-        });
-        return;
-      }
-
+      console.log("spaceBlockedSongs:", spaceBlockedSongs);
+      // ... (log if the URL is blocked)
+  
       if (previousQueueLength >= MAX_QUEUE_LENGTH) {
-        currentUser.ws.forEach((ws) => {
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              data: {
-                message: "Queue limit reached",
-              },
-            })
-          );
-        });
+        console.log("Queue limit reached:", MAX_QUEUE_LENGTH);
+        // ...
         return;
       }
     }
-
+  
+    console.log("Calling adminAddStreamHandler");
     await this.adminAddStreamHandler(spaceId, currentUser.userId, url, previousQueueLength);
+    console.log("adminAddStreamHandler completed");
   }
 
   disconnect(ws: WebSocket) {

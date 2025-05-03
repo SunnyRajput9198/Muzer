@@ -125,15 +125,14 @@ async function processUserAction(type: string, data: Data) {
       console.warn("Unknown message type:", type);
   }
 }
-
 async function handleUserAction(ws: WebSocket, type: string, data: Data) {
   const user = RoomManager.getInstance().users.get(data.userId);
 
-  if (user) {
-    console.log("handleUserAction", data.userId);
-    data.userId ;
+  if (user && user.ws.some((existingWs) => existingWs === ws)) {
+    console.log(`handleUserAction - User ${data.userId} authorized for action: ${type}`);
     await processUserAction(type, data);
   } else {
+    console.warn(`Unauthorized action (${type}) attempted by user ${data.userId} or invalid WebSocket.`);
     sendError(ws, "You are unauthorized to perform this action");
   }
 }
