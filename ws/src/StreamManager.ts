@@ -5,8 +5,6 @@ import { PrismaClient } from "@prisma/client";
 import { getVideoId, isValidYoutubeURL } from "./utils";
 
 const TIME_SPAN_FOR_VOTE = 1200000; // 20min
-const TIME_SPAN_FOR_QUEUE = 1200000; // 20min
-const TIME_SPAN_FOR_REPEAT = 3600000;
 const MAX_QUEUE_LENGTH = 20;
 
 export class RoomManager {

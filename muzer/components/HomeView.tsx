@@ -1,6 +1,6 @@
 "use client";
 import { toast } from "sonner";
-import  Appbar  from "@/components/Appbar";
+import Appbar from "@/components/Appbar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import CardSkeleton from "@/components/ui/cardskeleton";
 import SpacesCard from "./SpaceCard";
 
@@ -78,13 +78,15 @@ export default function HomeView() {
         const updatedSpaces: Space[] = prev ? [...prev, newSpace] : [newSpace];
         return updatedSpaces;
       });
-      toast.success(data.message); 
-    } catch (error: any) {
-      toast.error(error.message || "Error Creating Space"); 
+      toast.success(data.message);
+    }
+    //@ts-nocheck
+    catch (error: any) {
+      toast.error(error.message || "Error Creating Space");
     }
   };
-// Deletes a space using a DELETE request with the spaceId query param.
-  const handleDeleteSpace = async (spaceId: string) => {
+  // Deletes a space using a DELETE request with the spaceId query param.
+  const handleDeleteSpace = useCallback(async (spaceId: string) => {
     try {
       const response = await fetch(`/api/spaces/?spaceId=${spaceId}`, {
         method: "DELETE",
@@ -102,12 +104,13 @@ export default function HomeView() {
       });
       toast.success(data.message);
     } catch (error: any) {
-      toast.error(error.message || "Error Deleting Space"); 
+      toast.error(error.message || "Error Deleting Space");
     }
-  };
-//ses useMemo to optimize rendering.
-// Shows skeleton cards when loading.
-// Shows SpacesCard components when data is ready.
+  }, [setSpaces, toast]); // Add dependencies if needed
+
+  //ses useMemo to optimize rendering.
+  // Shows skeleton cards when loading.
+  // Shows SpacesCard components when data is ready.
   const renderSpaces = useMemo(() => {
     if (loading) {
       return (

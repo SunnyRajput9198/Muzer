@@ -3,7 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { SocketContextProvider } from "@/context/socket-context";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-//@ts-ignore
+//@ts-expect-error
 import { type ThemeProviderProps } from "next-themes/dist/types";
 //core idea behind this is to wrap children with SessionProvider and SocketContextProvider
 export function Providers({ children }: { children: React.ReactNode }) {

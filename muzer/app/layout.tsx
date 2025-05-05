@@ -13,12 +13,11 @@ const toastOptions: ToasterProps = {
   theme: "dark",
   richColors: true,
   closeButton: true,
-  pauseWhenPageIsHidden: true,
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXTAUTH_URL || "https://muzer.100xdevs.com/",
+    process.env.NEXTAUTH_URL || "https://muzer.world",
   ),
   keywords:
     "music stream, fan interaction, live streaming, high-quality audio, curate music, Muzer",

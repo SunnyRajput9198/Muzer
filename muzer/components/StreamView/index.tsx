@@ -73,21 +73,20 @@ export default function StreamView({
     refreshStreams();
   }, []);
 
-  async function addToQueue(newStream: any) {
+  async function addToQueue(newStream: Video) {
     setQueue((prev) => [...prev, newStream]);
     setInputLink("");
     setLoading(false);
   }
 
   async function refreshStreams() {
-    try {
       const res = await fetch(`/api/streams/?spaceId=${spaceId}`, {
         credentials: "include",
       });
       const json = await res.json();
 
       setQueue(
-        json.streams.sort((a: any, b: any) => (a.upvotes < b.upvotes ? 1 : -1))
+        json.streams.sort((a: Video, b: Video) => (a.upvotes < b.upvotes ? 1 : -1))
       );
 
       setCurrentVideo((video) => {
@@ -96,9 +95,7 @@ export default function StreamView({
       });
 
       setSpaceName(json.spaceName);
-    } catch (error) {
-      enqueueToast("error", "Something went wrong");
-    }
+   
 
     setPlayNextLoader(false);
   }

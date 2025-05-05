@@ -10,7 +10,6 @@ import LiteYouTubeEmbed from "react-lite-youtube-embed";
 import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 import { YT_REGEX } from "../lib/utils";
 import YouTubePlayer from "youtube-player";
-import { useSession } from "next-auth/react";
 import type { Session } from "next-auth";
 import Image from "next/image";
 import {
@@ -42,18 +41,7 @@ interface Video {
   haveUpvoted: boolean;
   spaceId: string
 }
-// Omit<Session, "user">
-// This means:
-// "Take everything from the Session type except the user field."
-// So you remove the user field from the original Session type.
-interface CustomSession extends Omit<Session, "user"> {
-  user: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
-}
+
 
 const REFRESH_INTERVAL_MS = 10 * 1000;
 
@@ -88,7 +76,7 @@ export default function StreamView({
       if (json.streams && Array.isArray(json.streams)) {
         setQueue(
           json.streams.length > 0
-            ? json.streams.sort((a: any, b: any) => b.upvotes - a.upvotes)
+            ? json.streams.sort((a: Video, b: Video) => b.upvotes - a.upvotes)
             : [],
         );
       } else {

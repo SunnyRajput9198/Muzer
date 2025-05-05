@@ -26,7 +26,7 @@ export default function NowPlaying({
     if (!videoPlayerRef.current || !currentVideo) {
       return;
     }
-    let player = YouTubePlayer(videoPlayerRef.current);
+    const player = YouTubePlayer(videoPlayerRef.current);
 
     // 'loadVideoById' is queued until the player is ready to receive API calls.
     player.loadVideoById(currentVideo.extractedId);
