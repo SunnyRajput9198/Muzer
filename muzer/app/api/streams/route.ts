@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import {prismaclient as db} from "../../lib/db";
+import db from "@/lib/db";
 //@ts-ignore
 import youtubesearchapi from "youtube-search-api";
-import { YT_REGEX } from "../../lib/utils";
+import { YT_REGEX } from "../../../lib/utils";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../lib/auth-options";
+import { authOptions } from "../../../lib/auth-options";
 
 
 const CreateStreamSchema = z.object({
@@ -260,7 +260,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   const hostId =space?.hostId;
-  const isCreator = session.user.id=== hostId
+  const isCreator = session.user.id=== hostId;
 
   return NextResponse.json({
     streams: space?.streams.map(({_count, ...rest}) => ({
