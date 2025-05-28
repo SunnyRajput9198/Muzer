@@ -1,14 +1,16 @@
 "use client";
 
-import { use } from "react";
+// Remove 'use' from this import, as you won't need it for 'params'
 import { useEffect, useState } from "react";
 import { useSocket } from "@/context/socket-context";
 import StreamView from "@/components/StreamView";
 import ErrorScreen from "@/components/ErrorScreen";
 import LoadingScreen from "@/components/LoadingScreen";
 
-export default function Component({ params }: { params: Promise<{ spaceId: string }> }) {
-  const { spaceId } = use(params);
+// Correct the type definition for 'params'
+export default function Component({ params }: { params: { spaceId: string } }) {
+  // Directly destructure spaceId from params, no need for the 'use' hook
+  const { spaceId } = params;
   const { socket, user, loading, setUser, connectionError } = useSocket();
 
   const [creatorId, setCreatorId] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export default function Component({ params }: { params: Promise<{ spaceId: strin
       try {
         const response = await fetch(`/api/spaces/?spaceId=${spaceId}`);
         const data = await response.json();
-        console.log("data",data)
+        console.log("data", data);
 
         if (!response.ok || !data.success) {
           throw new Error(data.message || "Failed to retrieve space's host id");
@@ -41,9 +43,11 @@ export default function Component({ params }: { params: Promise<{ spaceId: strin
 
     fetchHostId();
   }, [spaceId]);
-console.log("creatorId",creatorId)
-console.log("user",user)
-console.log("socket",socket)
+
+  console.log("creatorId", creatorId);
+  console.log("user", user);
+  console.log("socket", socket);
+
   // Generate token server-side and send join-room over socket
   useEffect(() => {
     if (user && socket && creatorId) {
@@ -81,7 +85,7 @@ console.log("socket",socket)
               data: {
                 token,
                 spaceId,
-                userId: user.id
+                userId: user.id,
               },
             })
           );
@@ -96,12 +100,16 @@ console.log("socket",socket)
 
       joinRoom();
     }
-  }, [spaceId, creatorId, socket]);
+  }, [spaceId, creatorId, socket, user, setUser]); // Added user and setUser to dependency array
 
   if (connectionError) return <ErrorScreen>Cannot connect to socket server</ErrorScreen>;
   if (loading || loading1) return <LoadingScreen />;
   if (!user) return <ErrorScreen>Please log in...</ErrorScreen>;
-  if (user.id !== creatorId) return <ErrorScreen>You are not the creator of this space</ErrorScreen>;
+  // The condition user.id !== creatorId will only become true once creatorId is fetched.
+  // If creatorId is still null/undefined while user is set, this check might fail prematurely.
+  // Consider the loading state of creatorId (loading1) before this check.
+  if (creatorId && user.id !== creatorId) return <ErrorScreen>You are not the creator of this space</ErrorScreen>;
+
 
   return <StreamView creatorId={creatorId!} playVideo={true} spaceId={spaceId} />;
 }

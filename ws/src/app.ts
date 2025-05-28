@@ -102,15 +102,15 @@ async function processUserAction(type: string, data: Data) {
       break;
 
     case "play-next":
-      RoomManager.getInstance().enqueuePlayNext(data.spaceId, data.userId);
+      RoomManager.getInstance().adminPlayNext(data.spaceId, data.userId);
       break;
 
     case "remove-song":
-      RoomManager.getInstance().enqueueRemoveSong(data);
+      RoomManager.getInstance().adminRemoveSong(data.spaceId, data.userId, data.streamId);
       break;
 
     case "empty-queue":
-      RoomManager.getInstance().enqueueEmptyQueue(data);
+      RoomManager.getInstance().adminEmptyQueue(data.spaceId);
       break;
 
     case "pay-and-play-next":

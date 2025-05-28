@@ -1,0 +1,20 @@
+# Stage 1: Install dependencies
+FROM node:22-alpine AS installer
+
+WORKDIR /usr/src/app
+RUN corepack enable npm
+# Add the following line to install OpenSSL
+RUN apk add --no-cache openssl
+
+COPY package.json npm-lock.yaml ./
+RUN npm install --frozen-lockfile --ignore-scripts
+COPY . .
+RUN npm run postinstall # This script uses Prisma, which needs libssl.so.1.1
+
+# Stage 2: Development server
+FROM node:22-alpine AS dev
+
+WORKDIR /usr/src/app
+RUN corepack enable npm
+COPY --from=installer /usr/src/app/ ./
+CMD [ "/bin/sh", "-c", "npm run dev:docker" ]

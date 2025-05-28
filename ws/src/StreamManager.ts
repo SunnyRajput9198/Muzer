@@ -1,107 +1,145 @@
 import WebSocket from "ws";
+import { createClient, RedisClientType } from "redis";
 //@ts-ignore
 import youtubesearchapi from "youtube-search-api";
+import { Job, Queue, Worker } from "bullmq";
 import { PrismaClient } from "@prisma/client";
 import { getVideoId, isValidYoutubeURL } from "./utils";
 
 const TIME_SPAN_FOR_VOTE = 1200000; // 20min
+const TIME_SPAN_FOR_QUEUE = 1200000; // 20min
+const TIME_SPAN_FOR_REPEAT = 3600000;
 const MAX_QUEUE_LENGTH = 20;
+
+const connection = {
+  username: process.env.REDIS_USERNAME || "",
+  password: process.env.REDIS_PASSWORD || "",
+  host: process.env.REDIS_HOST || "",
+  port: parseInt(process.env.REDIS_PORT || "") || 6379,
+};
+
+const redisCredentials = {
+  url: `redis://${connection.username}:${connection.password}@${connection.host}:${connection.port}`,
+};
 
 export class RoomManager {
   private static instance: RoomManager;
   public spaces: Map<string, Space>;
   public users: Map<string, User>;
+  public redisClient: RedisClientType;
+  public publisher: RedisClientType;
+  public subscriber: RedisClientType;
   public prisma: PrismaClient;
+  public queue: Queue;
+  public worker: Worker;
   public wstoSpace: Map<WebSocket, string>;
-  private lastVoted: Map<string, Map<string, number>>; // spaceId -> userId -> timestamp
-  private queueLength: Map<string, number>; // spaceId -> length
-  private lastAdded: Map<string, Map<string, number>>; // spaceId -> userId -> timestamp
-  private blockedSongs: Map<string, Set<string>>; // spaceId -> Set of URLs
-  private actionQueue: any[] = []; // Example: simple array for the queue
 
   private constructor() {
     this.spaces = new Map();
     this.users = new Map();
+    this.redisClient = createClient(redisCredentials);
+    this.publisher = createClient(redisCredentials);
+    this.subscriber = createClient(redisCredentials);
     this.prisma = new PrismaClient();
+    this.queue = new Queue(process.pid.toString(), {
+      connection,
+    });
+    this.worker = new Worker(process.pid.toString(), this.processJob, {
+      connection,
+    });
     this.wstoSpace = new Map();
-    this.lastVoted = new Map();
-    this.queueLength = new Map();
-    this.lastAdded = new Map();
-    this.blockedSongs = new Map();
   }
 
   static getInstance() {
     if (!RoomManager.instance) {
       RoomManager.instance = new RoomManager();
     }
+
     return RoomManager.instance;
   }
 
-  async createRoom(spaceId: string, creatorId: string) {
-    console.log(process.pid + ": createRoom: ", { spaceId, creatorId });
-    if (!this.spaces.has(spaceId)) {
-      this.spaces.set(spaceId, {
-        users: new Map<string, User>(),
-        creatorId: creatorId,
-      });
-      this.lastVoted.set(spaceId, new Map());
-      this.queueLength.set(spaceId, 0);
-      this.lastAdded.set(spaceId, new Map());
-      this.blockedSongs.set(spaceId, new Set());
+  async processJob(job: Job) {
+    const { data, name } = job;
+    if (name === "cast-vote") {
+      await RoomManager.getInstance().adminCastVote(
+        data.creatorId,
+        data.userId,
+        data.streamId,
+        data.vote,
+        data.spaceId
+      );
+    } else if (name === "add-to-queue") {
+      await RoomManager.getInstance().adminAddStreamHandler(
+        data.spaceId,
+        data.userId,
+        data.url,
+        data.existingActiveStream
+      );
+    } else if (name === "play-next") {
+      await RoomManager.getInstance().adminPlayNext(data.spaceId, data.userId);
+    } else if (name === "remove-song") {
+      await RoomManager.getInstance().adminRemoveSong(
+        data.spaceId,
+        data.userId,
+        data.streamId
+      );
+    } else if (name === "empty-queue") {
+      await RoomManager.getInstance().adminEmptyQueue(data.spaceId);
     }
   }
 
-  async joinRoom(
-    spaceId: string,
-    creatorId: string,
-    userId: string,
-    ws: WebSocket,
-    token: string
-  ) {
-    console.log(`Attempting to join room: spaceId=${spaceId}, userId=${userId}`);
-  
-    let space = this.spaces.get(spaceId);
-    let user = this.users.get(userId);
-  
-    console.log(`Initial space:`, space);
-    console.log(`Initial user:`, user);
-  
-    if (!space) {
-      console.log(`Room ${spaceId} not found. Creating...`);
-      await this.createRoom(spaceId, creatorId);
-      space = this.spaces.get(spaceId);
-      console.log(`Room ${spaceId} created. New space:`, space);
-    }
-  
-    if (!user) {
-      console.log(`User ${userId} not found. Adding...`);
-      await this.addUser(userId, ws, token);
-      user = this.users.get(userId);
-      console.log(`User ${userId} added. New user:`, user);
-    } else {
-      if (!user.ws.some((existingWs) => existingWs === ws)) {
-        user.ws.push(ws);
-        console.log(`Added new WebSocket to existing user ${userId}.`);
-      } else {
-        console.log(`WebSocket already exists for user ${userId}.`);
-      }
-    }
-  
-    this.wstoSpace.set(ws, spaceId);
-    console.log(`WebSocket to space mapping updated: ws -> ${spaceId}`);
-  
-    if (space && user) {
-      space.users.set(userId, user);
-      this.spaces.set(spaceId, {
-        ...space,
-        users: new Map(space.users),
-        creatorId: creatorId,
-      });
-      console.log(`User ${userId} added to space ${spaceId}. Updated space:`, this.spaces.get(spaceId));
-    } else {
-      console.warn(`Could not fully add user ${userId} to space ${spaceId}. Space: ${space}, User: ${user}`);
+  async initRedisClient() {
+    await this.redisClient.connect();
+    await this.subscriber.connect();
+    await this.publisher.connect();
+  }
+
+  onSubscribeRoom(message: string, spaceId: string) {
+    console.log("Subscibe Room", spaceId);
+    const { type, data } = JSON.parse(message);
+    if (type === "new-stream") {
+      RoomManager.getInstance().publishNewStream(spaceId, data);
+    } else if (type === "new-vote") {
+      RoomManager.getInstance().publishNewVote(
+        spaceId,
+        data.streamId,
+        data.vote,
+        data.votedBy
+      );
+    } else if (type === "play-next") {
+      RoomManager.getInstance().publishPlayNext(spaceId);
+    } else if (type === "remove-song") {
+      RoomManager.getInstance().publishRemoveSong(spaceId, data.streamId);
+    } else if (type === "empty-queue") {
+      RoomManager.getInstance().publishEmptyQueue(spaceId);
     }
   }
+
+  async createRoom(spaceId: string) {
+    console.log(process.pid + ": createRoom: ", { spaceId });
+    if (!this.spaces.has(spaceId)) {
+      this.spaces.set(spaceId, {
+        users: new Map<string, User>(),
+        creatorId: "",
+      });
+      // const roomsString = await this.redisClient.get("rooms");
+      // if (roomsString) {
+      //   const rooms = JSON.parse(roomsString);
+      //   if (!rooms.includes(creatorId)) {
+      //     await this.redisClient.set(
+      //       "rooms",
+      //       JSON.stringify([...rooms, creatorId])
+      //     , {
+      //       EX: 3600 * 24
+      //     });
+      //   }
+      // } else {
+      //   await this.redisClient.set("rooms", JSON.stringify([creatorId]));
+      // }
+      await this.subscriber.subscribe(spaceId, this.onSubscribeRoom);
+    }
+  }
+
   async addUser(userId: string, ws: WebSocket, token: string) {
     let user = this.users.get(userId);
     if (!user) {
@@ -116,21 +154,42 @@ export class RoomManager {
       }
     }
   }
-  private async processQueue() {
-    while (this.actionQueue.length > 0) {
-      const action = this.actionQueue.shift();
-      switch (action?.type) {
-        case 'play-next':
-          await this.adminPlayNext(action.spaceId, action.userId);
-          break;
-        case 'remove-song':
-          await this.adminRemoveSong(action.data.spaceId, action.data.userId, action.data.streamId);
-          break;
-        case 'empty-queue':
-          await this.adminEmptyQueue(action.data.spaceId);
-          break;
-        // Add other cases as needed
+
+  async joinRoom(
+    spaceId: string,
+    creatorId: string,
+    userId: string,
+    ws: WebSocket,
+    token: string
+  ) {
+    console.log("Join Room" + spaceId);
+
+    let space = this.spaces.get(spaceId);
+    let user = this.users.get(userId);
+
+    if (!space) {
+      await this.createRoom(spaceId);
+      space = this.spaces.get(spaceId);
+    }
+
+    if (!user) {
+      await this.addUser(userId, ws, token);
+      user = this.users.get(userId);
+    } else {
+      if (!user.ws.some((existingWs) => existingWs === ws)) {
+        user.ws.push(ws);
       }
+    }
+
+    this.wstoSpace.set(ws, spaceId);
+
+    if (space && user) {
+      space.users.set(userId, user);
+      this.spaces.set(spaceId, {
+        ...space,
+        users: new Map(space.users),
+        creatorId: creatorId,
+      });
     }
   }
 
@@ -163,26 +222,14 @@ export class RoomManager {
           playedTs: new Date(),
         },
       });
-      this.queueLength.set(spaceId, 0);
-      this.publishEmptyQueue(spaceId);
+      await this.publisher.publish(
+        spaceId,
+        JSON.stringify({
+          type: "empty-queue",
+        })
+      );
     }
   }
-
-  enqueuePlayNext(spaceId: string, userId: string) {
-    this.actionQueue.push({ type: 'play-next', spaceId, userId });
-    this.processQueue(); // Or trigger processing at a different point
-  }
-
-  enqueueRemoveSong(data: any) {
-    this.actionQueue.push({ type: 'remove-song', data });
-    this.processQueue();
-  }
-
-  enqueueEmptyQueue(data: any) {
-    this.actionQueue.push({ type: 'empty-queue', data });
-    this.processQueue();
-  }
-
 
   publishRemoveSong(spaceId: string, streamId: string) {
     console.log("publishRemoveSong");
@@ -214,7 +261,17 @@ export class RoomManager {
           spaceId: spaceId,
         },
       });
-      this.publishRemoveSong(spaceId, streamId);
+
+      await this.publisher.publish(
+        spaceId,
+        JSON.stringify({
+          type: "remove-song",
+          data: {
+            streamId,
+            spaceId,
+          },
+        })
+      );
     } else {
       user?.ws.forEach((ws) => {
         ws.send(
@@ -280,6 +337,8 @@ export class RoomManager {
           type: "Youtube",
           addedBy: userId,
           title: res.title ?? "Cant find video",
+          // smallImg: video.thumbnails.medium.url,
+          // bigImg: video.thumbnails.high.url,
           smallImg:
             (thumbnails.length > 1
               ? thumbnails[thumbnails.length - 2].url
@@ -319,7 +378,12 @@ export class RoomManager {
           },
         }),
       ]);
-      this.publishPlayNext(spaceId);
+      await this.publisher.publish(
+        spaceId,
+        JSON.stringify({
+          type: "play-next",
+        })
+      );
     }
   }
 
@@ -398,10 +462,23 @@ export class RoomManager {
       }),
     ]);
 
-    const currentQueueLength = this.queueLength.get(spaceId) || 1;
-    this.queueLength.set(spaceId, currentQueueLength - 1);
+    let previousQueueLength = parseInt(
+      (await this.redisClient.get(`queue-length-${spaceId}`)) || "1",
+      10
+    );
+    if (previousQueueLength) {
+      await this.redisClient.set(
+        `queue-length-${spaceId}`,
+        previousQueueLength - 1
+      );
+    }
 
-    this.publishPlayNext(spaceId);
+    await this.publisher.publish(
+      spaceId,
+      JSON.stringify({
+        type: "play-next",
+      })
+    );
   }
 
   publishNewVote(
@@ -455,11 +532,21 @@ export class RoomManager {
         },
       });
     }
-    const spaceVotes = this.lastVoted.get(spaceId);
-    if (spaceVotes) {
-      spaceVotes.set(userId, new Date().getTime());
-    }
-    this.publishNewVote(spaceId, streamId, vote as "upvote" | "downvote", userId);
+    await this.redisClient.set(
+      `lastVoted-${spaceId}-${userId}`,
+      new Date().getTime(),
+      {
+        EX: TIME_SPAN_FOR_VOTE / 1000,
+      }
+    );
+
+    await this.publisher.publish(
+      spaceId,
+      JSON.stringify({
+        type: "new-vote",
+        data: { streamId, vote, votedBy: userId },
+      })
+    );
   }
 
   async castVote(
@@ -478,10 +565,11 @@ export class RoomManager {
       return;
     }
     if (!isCreator) {
-      const spaceVotes = this.lastVoted.get(spaceId);
-      const lastVotedTime = spaceVotes?.get(userId);
+      const lastVoted = await this.redisClient.get(
+        `lastVoted-${spaceId}-${userId}`
+      );
 
-      if (lastVotedTime && new Date().getTime() - lastVotedTime < TIME_SPAN_FOR_VOTE) {
+      if (lastVoted) {
         currentUser?.ws.forEach((ws) => {
           ws.send(
             JSON.stringify({
@@ -496,7 +584,13 @@ export class RoomManager {
       }
     }
 
-    await this.adminCastVote(creatorId as string, userId, streamId, vote, spaceId);
+    await this.queue.add("cast-vote", {
+      creatorId,
+      userId,
+      streamId,
+      vote,
+      spaceId: spaceId,
+    });
   }
 
   publishNewStream(spaceId: string, data: any) {
@@ -547,7 +641,10 @@ export class RoomManager {
       return;
     }
 
-    this.queueLength.set(spaceId, existingActiveStream + 1);
+    await this.redisClient.set(
+      `queue-length-${spaceId}`,
+      existingActiveStream + 1
+    );
 
     const res = await youtubesearchapi.GetVideoDetails(extractedId);
 
@@ -565,11 +662,13 @@ export class RoomManager {
           type: "Youtube",
           addedBy: userId,
           title: res.title ?? "Cant find video",
+          // smallImg: video.thumbnails.medium.url,
+          // bigImg: video.thumbnails.high.url,
           smallImg:
             (thumbnails.length > 1
               ? thumbnails[thumbnails.length - 2].url
-            : thumbnails[thumbnails.length - 1].url) ??
-          "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
+              : thumbnails[thumbnails.length - 1].url) ??
+            "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
           bigImg:
             thumbnails[thumbnails.length - 1].url ??
             "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
@@ -577,21 +676,29 @@ export class RoomManager {
         },
       });
 
-      const spaceBlockedSongs = this.blockedSongs.get(spaceId);
-      if (spaceBlockedSongs) {
-        spaceBlockedSongs.add(url);
-      }
-
-      const spaceLastAdded = this.lastAdded.get(spaceId);
-      if (spaceLastAdded) {
-        spaceLastAdded.set(userId, new Date().getTime());
-      }
-
-      this.publishNewStream(spaceId, {
-        ...stream,
-        hasUpvoted: false,
-        upvotes: 0,
+      await this.redisClient.set(`${spaceId}-${url}`, new Date().getTime(), {
+        EX: TIME_SPAN_FOR_REPEAT / 1000,
       });
+
+      await this.redisClient.set(
+        `lastAdded-${spaceId}-${userId}`,
+        new Date().getTime(),
+        {
+          EX: TIME_SPAN_FOR_QUEUE / 1000,
+        }
+      );
+
+      await this.publisher.publish(
+        spaceId,
+        JSON.stringify({
+          type: "new-stream",
+          data: {
+            ...stream,
+            hasUpvoted: false,
+            upvotes: 0,
+          },
+        })
+      );
     } else {
       currentUser?.ws.forEach((ws) => {
         ws.send(
@@ -607,52 +714,100 @@ export class RoomManager {
   }
 
   async addToQueue(spaceId: string, currentUserId: string, url: string) {
-    console.log(process.pid + ": addToQueue", { spaceId, currentUserId, url });
-  
+    console.log(process.pid + ": addToQueue");
+
     const space = this.spaces.get(spaceId);
     const currentUser = this.users.get(currentUserId);
     const creatorId = this.spaces.get(spaceId)?.creatorId;
     const isCreator = currentUserId === creatorId;
-  
-    console.log("space:", space);
-    console.log("currentUser:", currentUser);
-    console.log("creatorId:", creatorId);
-    console.log("isCreator:", isCreator);
-  
+
     if (!space || !currentUser) {
       console.log("433: Room or User not defined");
       return;
     }
-  
+
     if (!isValidYoutubeURL(url)) {
-      console.log("Invalid YouTube URL:", url);
-      // ...
+      currentUser?.ws.forEach((ws) => {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            data: { message: "Invalid YouTube URL" },
+          })
+        );
+      });
       return;
     }
-  
-    let previousQueueLength = this.queueLength.get(spaceId) || 0;
-    console.log("previousQueueLength:", previousQueueLength);
-  
+
+    let previousQueueLength = parseInt(
+      (await this.redisClient.get(`queue-length-${spaceId}`)) || "0",
+      10
+    );
+
+    // Checking if its zero that means there was no record in
+    if (!previousQueueLength) {
+      previousQueueLength = await this.prisma.stream.count({
+        where: {
+          spaceId: spaceId,
+          played: false,
+        },
+      });
+    }
+
     if (!isCreator) {
-      const spaceLastAdded = this.lastAdded.get(spaceId);
-      const lastAddedTime = spaceLastAdded?.get(currentUserId);
-      console.log("lastAddedTime:", lastAddedTime);
-      // ... (log the time difference if lastAddedTime exists)
-  
-      const spaceBlockedSongs = this.blockedSongs.get(spaceId);
-      console.log("spaceBlockedSongs:", spaceBlockedSongs);
-      // ... (log if the URL is blocked)
-  
+      let lastAdded = await this.redisClient.get(
+        `lastAdded-${spaceId}-${currentUserId}`
+      );
+
+      if (lastAdded) {
+        currentUser.ws.forEach((ws) => {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: {
+                message: "You can add again after 20 min.",
+              },
+            })
+          );
+        });
+        return;
+      }
+      let alreadyAdded = await this.redisClient.get(`${spaceId}-${url}`);
+
+      if (alreadyAdded) {
+        currentUser.ws.forEach((ws) => {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: {
+                message: "This song is blocked for 1 hour",
+              },
+            })
+          );
+        });
+        return;
+      }
+
       if (previousQueueLength >= MAX_QUEUE_LENGTH) {
-        console.log("Queue limit reached:", MAX_QUEUE_LENGTH);
-        // ...
+        currentUser.ws.forEach((ws) => {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: {
+                message: "Queue limit reached",
+              },
+            })
+          );
+        });
         return;
       }
     }
-  
-    console.log("Calling adminAddStreamHandler");
-    await this.adminAddStreamHandler(spaceId, currentUser.userId, url, previousQueueLength);
-    console.log("adminAddStreamHandler completed");
+
+    await this.queue.add("add-to-queue", {
+      spaceId,
+      userId: currentUser.userId,
+      url,
+      existingActiveStream: previousQueueLength,
+    });
   }
 
   disconnect(ws: WebSocket) {
