@@ -10,7 +10,10 @@ import { PrismaClient } from "@prisma/client";
 
 
 const prisma =new PrismaClient();
-
+// console.log("DEBUG: process.env.NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
+// console.log("DEBUG: process.env.GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID);
+// console.log("DEBUG: process.env.GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET);
+// console.log("DEBUG: process.env.NEXTAUTH_SECRET:", process.env.NEXTAUTH_SECRET);
 export const authOptions = {
   providers: [
     GoogleProvider({
@@ -97,6 +100,7 @@ export const authOptions = {
       },
     })
   ],
+  debug: true,
    // Redirect to custom login page
   pages: {
     signIn: "/auth"

@@ -1,15 +1,19 @@
-FROM node:22-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json .
+# Declare DATABASE_URL as a build argument
+ARG DATABASE_URL
 
-RUN npm install npm -g --ignore-scripts
+# Copy package.json and package-lock.json for reproducible installs
+COPY package.json package-lock.json ./
 
-RUN npm install --ignore-scripts
+# Clean install dependencies based on package-lock.json
+RUN npm ci --ignore-scripts
 
 COPY . .
 
+# Run Prisma generate and build with DATABASE_URL environment variable
 RUN DATABASE_URL=$DATABASE_URL npx prisma generate
 RUN DATABASE_URL=$DATABASE_URL npm run build
 

@@ -32,7 +32,7 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<{ id: string; token?: string } | null>(null);
   const [connectionError, setConnectionError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0); // For exponential backoff
+  const [retryCount, setRetryCount] = useState(0);
   const session = useSession();
 
   const connectWebSocket = (wsUrl: string) => {
@@ -40,72 +40,60 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log("WebSocket connection established.");
+      console.log("WebSocket connected.");
       setSocket(ws);
       setUser(session.data?.user || null);
-      setLoading(false);
       setConnectionError(false);
-      setRetryCount(0); // Reset retry count on successful connection
-
-      // If your server requires the token upon connection, you might send it here
-      // Example:
-      // if (session.data?.user?.token) {
-      //   ws.send(JSON.stringify({ type: "auth", token: session.data.user.token }));
-      // }
+      setLoading(false);
+      setRetryCount(0);
     };
 
     ws.onmessage = (event) => {
-      console.log("Message received from server:", event.data);
-      // TODO: Implement your message handling logic here.
-      // Parse the event.data (likely JSON) and update your application state.
+      console.log("Received:", event.data);
+      // Handle message
     };
 
-    ws.onerror = (error) => {
-      // console.error("WebSocket error encountered:", error);
-      console.log(`WebSocket readyState: ${ws.readyState}`);
+    ws.onerror = () => {
+      console.log("WebSocket error.");
       setConnectionError(true);
       setLoading(false);
-      // TODO: Consider more specific error handling based on the error object.
     };
 
     ws.onclose = (event) => {
-      console.warn("WebSocket connection closed:", event);
-      console.log(`Code: ${event.code}, Reason: ${event.reason}`);
+      console.warn("WebSocket closed:", event);
       setSocket(null);
       setLoading(true);
       setConnectionError(true);
 
-      // Retry after a delay, with exponential backoff to avoid flooding the server
-      const delay = Math.min(3000 * Math.pow(2, retryCount), 30000); // Cap at 30 seconds
+      const delay = Math.min(3000 * Math.pow(2, retryCount), 30000);
       setRetryCount((prev) => prev + 1);
-
       setTimeout(() => {
-        console.log("Retrying WebSocket connection...");
-        // Consider adding a check for network connectivity before retrying.
         connectWebSocket(wsUrl);
       }, delay);
-      // TODO: Consider implementing a maximum number of retry attempts.
     };
-
-    return ws;
   };
 
   useEffect(() => {
-    // Only attempt to connect if the session is authenticated and we have a user ID
-    // and if a socket connection doesn't already exist.
-    if (session.status === "authenticated" && session.data?.user?.id && !socket) {
-      const wsUrl = process.env.NEXT_PUBLIC_WSS_URL || "ws://localhost:8080";
+    if (
+      session.status === "authenticated" &&
+      session.data?.user?.id &&
+      !socket
+    ) {
+      const wsUrl =
+        typeof window === "undefined"
+          ? process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://websockets:8080"
+          : "ws://localhost:8080";
+
       connectWebSocket(wsUrl);
     }
 
-    // Cleanup function to close the WebSocket connection when the component unmounts
     return () => {
-      if (socket) {
-        console.log("Closing WebSocket connection...");
+      if (socket?.readyState === WebSocket.OPEN) {
+        console.log("Closing WebSocket...");
         socket.close();
       }
     };
-  }, [session.status, session.data?.user, socket]);
+  }, [session.status, session.data?.user?.id]);
 
   const sendMessage = (type: string, data: { [key: string]: any }) => {
     if (socket?.readyState === WebSocket.OPEN) {
@@ -119,8 +107,7 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
         })
       );
     } else {
-      console.error("WebSocket is not open. Cannot send message.");
-      // TODO: Consider buffering messages to send when the connection is re-established.
+      console.error("WebSocket is not open.");
     }
   };
 
@@ -139,7 +126,4 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
     </SocketContext.Provider>
   );
 };
-
-export const useSocket = () => {
-  return useContext(SocketContext);
-};
+export const useSocket = () => useContext(SocketContext);

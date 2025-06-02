@@ -10,7 +10,7 @@
     "studio": "npx prisma studio",
     "postinstall": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
-    "prisma:docker": "npm postinstall && npm prisma:migrate && npm studio",
+    "prisma:docker": "npm run postinstall && npm run prisma:migrate && npm run studio",
     "dev:docker": "npm run prisma:docker & npm run dev",
     "format:fix": "prettier --write \"**/*.{ts,tsx,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,json}\""

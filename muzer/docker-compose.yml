@@ -4,13 +4,16 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile.dev
+      args: # <--- CRUCIAL: Pass DATABASE_URL during build
+        DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
     env_file:
-      - .env
+      - .env # Loads other environment variables like APP_PORT
     ports:
       - "${APP_PORT}:3000"
     depends_on:
       postgres:
         condition: service_healthy
+    # The 'develop' section is for live code reloading in development, keep this as is
     develop:
       watch:
         - action: sync
@@ -23,12 +26,18 @@ services:
           target: /usr/src/app
           ignore:
             - node_modules/
+    environment:
+      DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+    dns:
+      - 8.8.8.8 # Google Public DNS
+      - 8.8.4.4 # Google Public DNS
+
   postgres:
     container_name: prisma-postgres
     image: postgres:alpine
     restart: always
     env_file:
-     - .env
+      - .env # This should contain POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB for the postgres container
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -44,13 +53,15 @@ services:
     image: timothyjmiller/prisma-studio:latest
     restart: unless-stopped
     env_file:
-     - .env
+      - .env
     depends_on:
-      - app
+      - postgres # Changed from 'app' to 'postgres' as Prisma Studio should connect directly to postgres
     ports:
       - "${PRISMA_STUDIO_PORT}:5555"
+    environment: # Prisma Studio needs the DATABASE_URL as an environment variable
+      DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+
 
 volumes:
   postgres-data:
     external: false
- 

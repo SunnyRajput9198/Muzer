@@ -1,17 +1,43 @@
-FROM node:22-alpine AS installer
+# Stage 1: Install dependencies
+FROM node:20-alpine AS installer
 
 WORKDIR /usr/src/app
 RUN corepack enable npm
-COPY package.json npm-lock.yaml ./
-RUN npm install --frozen-lockfile --ignore-scripts
+
+# Install OpenSSL and libc6-compat for Prisma engine compatibility on Alpine
+RUN apk add --no-cache openssl libc6-compat
+
+# Set LD_PRELOAD for glibc compatibility (crucial for Prisma on Alpine)
+ENV LD_PRELOAD=/lib/libc.so.6
+
+# Copy both package.json and package-lock.json for reproducible installs
+COPY package.json package-lock.json ./
+
+# Clean and consistent install of dependencies according to package-lock.json
+RUN npm ci --ignore-scripts
+
 COPY . .
+
+# Run postinstall if needed, which might generate Prisma client
 RUN npm run postinstall
 
 
-FROM node:22-alpine AS dev
+# Stage 2: Development server
+FROM node:20-alpine AS dev
 
 WORKDIR /usr/src/app
 RUN corepack enable npm
-COPY --from=installer /usr/src/app/ ./
-CMD [ "npm","run", "dev" ]
 
+# Install OpenSSL and libc6-compat in the runtime (dev) stage as well
+RUN apk add --no-cache openssl libc6-compat
+
+# Set LD_PRELOAD for glibc compatibility in the runtime (dev) stage
+ENV LD_PRELOAD=/lib/libc.so.6
+
+# Copy everything from the installer stage, including node_modules and generated Prisma client
+COPY --from=installer /usr/src/app/ ./
+
+# Expose the port your WebSocket service runs on
+EXPOSE 8080
+
+CMD ["npm", "run", "dev"]

@@ -9,7 +9,7 @@ import { sendError } from "./utils";
 import { RoomManager } from "./StreamManager"; // Assuming this is the correct path
 
 dotenv.config();
-const cors = 1; // os.cpus().length  // for vertical scaling.  Adjust as needed.
+const cors = 1; // os.cpus().length  // for vertical scaling.  Adjust as needed.
 
 if (cluster.isPrimary) {
   for (let i = 0; i < cors; i++) {
@@ -20,6 +20,7 @@ if (cluster.isPrimary) {
     process.exit();
   });
 } else {
+    RoomManager.getInstance(); // Call once to ensure instance is created
   main();
 }
 
@@ -60,28 +61,30 @@ async function handleConnection(ws: WebSocket) {
 }
 
 async function handleJoinRoom(ws: WebSocket, data: Data) {
-  console.log("data.token", data.token);
-  jwt.verify(
-    data.token,
-    process.env.NEXTAUTH_SECRET as string,
-    (err: any, decoded: any) => {
-      if (err) {
-        console.error(err);
-        sendError(ws, "Token verification failed");
-      } else {
-        console.log("Decoded Token:", decoded); // Log the entire decoded object
-        RoomManager.getInstance().joinRoom(
-          data.spaceId,
-          decoded.creatorId, // Ensure 'creatorId' exists
-          decoded.userId,    // Check if 'userId' is here
-          ws,
-          data.token
-        );
-      }
-    }
-  );
+    console.log("data.token", data.token);
+    jwt.verify(
+        data.token,
+        process.env.NEXTAUTH_SECRET as string,
+        (err: any, decoded: any) => {
+            if (err) {
+                console.error("JWT verification failed:", err);
+                sendError(ws, "Authentication failed: Invalid token.");
+            } else if (!decoded || !decoded.creatorId || !decoded.userId) {
+                console.error("Decoded token missing required fields:", decoded);
+                sendError(ws, "Authentication failed: Token missing user/creator info.");
+            } else {
+                console.log("Decoded Token:", decoded);
+                RoomManager.getInstance().joinRoom(
+                    data.spaceId,
+                    decoded.creatorId,
+                    decoded.userId,
+                    ws,
+                    data.token
+                );
+            }
+        }
+    );
 }
-
 async function processUserAction(type: string, data: Data) {
   switch (type) {
     case "cast-vote":
@@ -138,15 +141,22 @@ async function handleUserAction(ws: WebSocket, type: string, data: Data) {
 }
 
 async function main() {
+  // const roomManager = RoomManager.getInstance(); // No longer explicitly calling initRedisClient
+  // try {
+  //   // Removed: await roomManager.initRedisClient();
+  //   // Removed: console.log(`${process.pid}: Redis clients connected successfully.`);
+  // } catch (error) {
+  //   // Removed: console.error(`${process.pid}: Failed to connect to Redis:`, error);
+  //   // Removed: process.exit(1);
+  // }
   const server = createHttpServer();
   const wss = new WebSocketServer({ server });
-  // Removed initRedisClient
   wss.on("connection", (ws, req) => {
     const origin = req.headers.origin;
     const allowedOrigins = [
       "http://localhost:3000", // Your Next.js frontend URL
-      "https://muzer.world", // Your Next.js frontend URL
-      "http://localhost:8080", // Potentially for testing
+      // "https://muzer.world", // Your Next.js frontend URL
+      // "http://localhost:8080", // Potentially for testing
       // Add any other allowed origins here
     ];
 

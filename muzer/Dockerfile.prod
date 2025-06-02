@@ -1,59 +1,64 @@
 # Stage 1: Install dependencies
-FROM node:22-alpine AS installer
+FROM node:20-alpine AS installer
 
 WORKDIR /usr/src/app
+
 RUN apk add --no-cache libc6-compat
-COPY package.json npm-lock.yaml ./
+
+# Copy lockfile and package.json for reproducible installs
+COPY package.json package-lock.json ./
+
+# Copy prisma schema separately if needed for generating client in next stages
 COPY prisma ./prisma
 
-RUN \
-    if [ -f npm-lock.yaml ]; then \
-    corepack enable npm && npm install --frozen-lockfile --ignore-scripts; \
-    else \
-    echo "npm-lock.yaml not found" && exit 1; \
-    fi
+# Install dependencies based on package-lock.json (clean and reproducible)
+RUN corepack enable npm && npm ci --ignore-scripts
 
 # Stage 2: Build stage
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
+
 WORKDIR /usr/src/app
 
+# Declare DATABASE_URL as a build argument for this stage
+ARG DATABASE_URL 
+
+# Copy installed node_modules and prisma folder from installer stage
 COPY --from=installer /usr/src/app/node_modules ./node_modules
 COPY --from=installer /usr/src/app/prisma ./prisma
 
+# Generate Prisma client with DATABASE_URL provided at build time
 RUN DATABASE_URL=$DATABASE_URL npx prisma generate
 
+# Copy rest of the source files
 COPY . .
 
-RUN \
-    if [ -f npm-lock.yaml ]; then \
-    corepack enable npm && npm run build; \
-    else \
-    echo "npm-lock.yaml not found" && exit 1; \
-    fi
+# Run build script
+RUN corepack enable npm && npm run build
 
-# Stage 3: Run stage 
-FROM node:22-alpine AS runner
+# Stage 3: Run stage
+FROM node:20-alpine AS runner
+
 WORKDIR /usr/src/app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder usr/src/app/public ./public
+# Copy static assets and build output from builder stage
+COPY --from=builder /usr/src/app/public ./public
 
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
-COPY --from=builder --chown=nextjs:nodejs  usr/src/app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs usr/src/app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /usr/src/app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /usr/src/app/.next/static ./.next/static
 
 USER nextjs
 
 EXPOSE 3000
 
-# For Standalone build
-ENV PORT 3000 
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-CMD [ "node", "server.js" ]
+CMD ["node", "server.js"]

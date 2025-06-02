@@ -1,20 +1,43 @@
-# Stage 1: Install dependencies
-FROM node:22-alpine AS installer
+# Stage 1: Install dependencies and generate Prisma client
+FROM node:20-alpine AS installer
 
 WORKDIR /usr/src/app
 RUN corepack enable npm
-# Add the following line to install OpenSSL
-RUN apk add --no-cache openssl
 
-COPY package.json npm-lock.yaml ./
-RUN npm install --frozen-lockfile --ignore-scripts
+# Install OpenSSL and libc6-compat for Prisma engine compatibility on Alpine
+RUN apk add --no-cache openssl libc6-compat
+
+# Set LD_PRELOAD for glibc compatibility (crucial for Prisma on Alpine)
+ENV LD_PRELOAD=/lib/libc.so.6
+
+# Copy package.json and package-lock.json for reproducible installs
+COPY package.json package-lock.json ./
+
+# Clean install dependencies based on lockfile
+RUN npm ci --ignore-scripts
+
+# Copy all application files
 COPY . .
-RUN npm run postinstall # This script uses Prisma, which needs libssl.so.1.1
+
+# Declare DATABASE_URL as a build argument
+ARG DATABASE_URL 
+
+# Run Prisma generate and any postinstall scripts with DATABASE_URL
+RUN DATABASE_URL=$DATABASE_URL npm run postinstall 
 
 # Stage 2: Development server
-FROM node:22-alpine AS dev
+FROM node:20-alpine AS dev
 
 WORKDIR /usr/src/app
 RUN corepack enable npm
+
+RUN apk add --no-cache openssl libc6-compat
+
+ENV LD_PRELOAD=/lib/libc.so.6
+
+# Copy everything from the installer stage (including node_modules and generated Prisma client)
 COPY --from=installer /usr/src/app/ ./
-CMD [ "/bin/sh", "-c", "npm run dev:docker" ]
+
+EXPOSE 3000
+
+CMD ["/bin/sh", "-c", "npm run dev:docker"]
