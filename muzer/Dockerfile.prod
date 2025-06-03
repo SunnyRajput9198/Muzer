@@ -3,6 +3,7 @@ FROM node:20-alpine AS installer
 
 WORKDIR /usr/src/app
 
+RUN apk add --no-cache openssl-dev openssl
 RUN apk add --no-cache libc6-compat
 
 # Copy lockfile and package.json for reproducible installs

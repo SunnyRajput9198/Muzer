@@ -29,8 +29,9 @@ RUN DATABASE_URL=$DATABASE_URL npm run postinstall
 FROM node:20-alpine AS dev
 
 WORKDIR /usr/src/app
-RUN corepack enable npm
 
+RUN corepack enable npm
+RUN apk add --no-cache openssl-dev openssl
 RUN apk add --no-cache openssl libc6-compat
 
 ENV LD_PRELOAD=/lib/libc.so.6

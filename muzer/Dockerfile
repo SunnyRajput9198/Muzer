@@ -5,6 +5,8 @@ WORKDIR /app
 # Declare DATABASE_URL as a build argument
 ARG DATABASE_URL
 
+#build warning aa rhi thi
+RUN apk add --no-cache openssl-dev openssl
 # Copy package.json and package-lock.json for reproducible installs
 COPY package.json package-lock.json ./
 
