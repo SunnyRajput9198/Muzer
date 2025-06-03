@@ -1,4 +1,5 @@
 // app/spaces/[spaceId]/page.tsx
+"use client";
 import { useEffect, useState } from "react";
 import { useSocket } from "@/context/socket-context";
 import StreamView from "@/components/StreamView";
