@@ -7,8 +7,15 @@ import StreamView from "@/components/StreamView";
 import ErrorScreen from "@/components/ErrorScreen";
 import LoadingScreen from "@/components/LoadingScreen";
 
+
+interface MySpacePageProps {
+  params: { spaceId: string };
+  // Add other props if your page component expects them (e.g., searchParams)
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
 // Correct the type definition for 'params'
-export default function Component({ params }: { params: { spaceId: string } }) {
+export default function Component({ params }: MySpacePageProps) {
   // Directly destructure spaceId from params, no need for the 'use' hook
   const { spaceId } = params;
   const { socket, user, loading, setUser, connectionError } = useSocket();

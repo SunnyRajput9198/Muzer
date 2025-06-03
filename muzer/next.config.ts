@@ -1,12 +1,13 @@
+// next.config.ts
 
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http', // or 'https' depending on your image source
+        protocol: 'http',
         hostname: 'example.com',
-        // port: '', // Optional: if your images are served on a specific port
-        // pathname: '/path/to/images/**', // Optional: if you want to restrict to certain paths
       },
       {
         protocol: 'https',
@@ -19,7 +20,14 @@ const nextConfig = {
       // Add patterns for other domains or subdomains as needed
     ],
   },
-  // ...other configurations
+  // Clean ESLint configuration
+  eslint: {
+    // 'ignoreDuringBuilds: false' means ESLint errors will break the build (recommended for production).
+    // Set to 'true' to allow builds to complete even with ESLint errors (useful for debugging, not recommended for final production).
+    ignoreDuringBuilds: false,
+  },
+  // You can add other Next.js configurations here
+  // For example: output: 'standalone', experimental: { appDir: true } etc.
 };
 
-module.exports = nextConfig;
+export default nextConfig;
