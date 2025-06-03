@@ -1,12 +1,14 @@
-// app/spaces/[spaceId]/page.tsx
-"use client";
+// File: app/dashboard/[spaceId]/page.tsx
+
+"use client"; // Ensure this is the very first line
+
 import { useEffect, useState } from "react";
 import { useSocket } from "@/context/socket-context";
 import StreamView from "@/components/StreamView";
 import ErrorScreen from "@/components/ErrorScreen";
 import LoadingScreen from "@/components/LoadingScreen";
 
-// Get params from Next.js directly in the function arg
+// Your PageProps interface (keep this as it is correct for your component)
 interface PageProps {
   params: {
     spaceId: string;

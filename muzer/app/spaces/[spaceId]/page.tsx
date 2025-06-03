@@ -6,8 +6,10 @@ import StreamView from "@/components/StreamView";
 import ErrorScreen from "@/components/ErrorScreen";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
-//@ts-expect-error
-import { SegmentParams } from "../../.next/types/app/spaces/page"; // Import SegmentParams
+
+interface SegmentParams {
+  spaceId: string;
+}
 
 export default function Page({ params }: { params: SegmentParams }) {
   const { spaceId } = params;
@@ -17,14 +19,13 @@ export default function Page({ params }: { params: SegmentParams }) {
 
   const [creatorId, setCreatorId] = useState<string | null>(null);
   const [loadingSpace, setLoadingSpace] = useState(true);
-  const [hasJoinedRoom, setHasJoinedRoom] = useState(false); // Track if user joined
-  const [tokenFetchError, setTokenFetchError] = useState<string | null>(null); // State for token fetch errors
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
+  const [tokenFetchError, setTokenFetchError] = useState<string | null>(null);
 
-  // Fetch host/creator ID
   useEffect(() => {
     const fetchHostId = async () => {
       try {
-        const res = await fetch(`/api/spaces?spaceId=${spaceId}`); // Corrected query parameter format
+        const res = await fetch(`/api/spaces?spaceId=${spaceId}`);
         const data = await res.json();
 
         if (!res.ok || !data.success) {
@@ -34,7 +35,6 @@ export default function Page({ params }: { params: SegmentParams }) {
         setCreatorId(data.hostId);
       } catch (err: any) {
         console.error("Error fetching host ID:", err);
-        // Consider showing an error to the user, perhaps using a state variable and an ErrorScreen component
       } finally {
         setLoadingSpace(false);
       }
@@ -43,10 +43,9 @@ export default function Page({ params }: { params: SegmentParams }) {
     fetchHostId();
   }, [spaceId]);
 
-  // Generate token securely via API & join room
   useEffect(() => {
     const joinRoom = async () => {
-      if (!user?.id || !creatorId || hasJoinedRoom) return; // Removed user?.token from here
+      if (!user?.id || !creatorId || hasJoinedRoom) return;
 
       try {
         const res = await fetch("/api/generate-token", {
@@ -65,33 +64,29 @@ export default function Page({ params }: { params: SegmentParams }) {
         }
 
         const token = data.token;
-        setUser({ ...user, token }); // Update user object with the token
-        sendMessage("join-room", { token, spaceId, userId: user.id }); // Send join-room message to server
-        setHasJoinedRoom(true); // Mark as joined
+        setUser({ ...user, token });
+        sendMessage("join-room", { token, spaceId, userId: user.id });
+        setHasJoinedRoom(true);
       } catch (error: any) {
         console.error("Error generating token or joining room:", error);
-        setTokenFetchError(error.message || "Failed to generate token"); // Set error state
+        setTokenFetchError(error.message || "Failed to generate token");
       }
     };
 
     joinRoom();
-  }, [user?.id, creatorId, spaceId, sendMessage, setUser, hasJoinedRoom]); // Removed user?.token
+  }, [user?.id, creatorId, spaceId, sendMessage, setUser, hasJoinedRoom]);
 
-  // UI states
   if (connectionError) return <ErrorScreen>Unable to connect to WebSocket server.</ErrorScreen>;
   if (loading || loadingSpace) return <LoadingScreen />;
   if (!user) return <ErrorScreen>Please log in.</ErrorScreen>;
-  if (tokenFetchError) return <ErrorScreen>{tokenFetchError}</ErrorScreen>; // Display token fetch error
+  if (tokenFetchError) return <ErrorScreen>{tokenFetchError}</ErrorScreen>;
 
-  // Redirect creator to dashboard
   if (user.id === creatorId) {
     router.push(`/dashboard/${spaceId}`);
     return null;
   }
 
-  return (
-    <StreamView creatorId={creatorId!} playVideo={false} spaceId={spaceId} />
-  );
+  return <StreamView creatorId={creatorId!} playVideo={false} spaceId={spaceId} />;
 }
 
 export const dynamic = "auto";
