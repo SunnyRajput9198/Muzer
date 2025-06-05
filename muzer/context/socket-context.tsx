@@ -79,6 +79,7 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
       session.data?.user?.id &&
       !socket
     ) {
+      
       const wsUrl =
         typeof window === "undefined"
           ? process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://websockets:8080"
