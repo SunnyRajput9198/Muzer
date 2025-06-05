@@ -1,43 +1,65 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS installer
+# Stage 1: Build & Install Dependencies (as 'builder')
+FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
+
+# Enable corepack for npm (if you use it)
 RUN corepack enable npm
 
 # Install OpenSSL and libc6-compat for Prisma engine compatibility on Alpine
+# These are crucial for Prisma to work correctly on Alpine-based images.
 RUN apk add --no-cache openssl libc6-compat
 
-# Set LD_PRELOAD for glibc compatibility (crucial for Prisma on Alpine)
+# Set LD_PRELOAD for glibc compatibility (important for Prisma on Alpine)
 ENV LD_PRELOAD=/lib/libc.so.6
 
-# Copy both package.json and package-lock.json for reproducible installs
+# Copy package.json and package-lock.json first to cache dependencies
 COPY package.json package-lock.json ./
 
-# Clean and consistent install of dependencies according to package-lock.json
+# Install dependencies cleanly and reproducibly
 RUN npm ci --ignore-scripts
 
+# Copy the rest of your application code (including schema.prisma and migrations)
 COPY . .
 
-# Run postinstall if needed, which might generate Prisma client
-RUN npm run postinstall
+# Run your application's build process (e.g., TypeScript compilation)
+# and then generate the Prisma client.
+# The order is important: build your app first, then generate Prisma client.
+RUN npm run build && npx prisma generate
 
 
-# Stage 2: Development server
-FROM node:20-alpine AS dev
+# Stage 2: Production Runtime Image (as 'production')
+FROM node:20-alpine AS production
 
 WORKDIR /usr/src/app
+
+# Enable corepack for npm in the production stage as well
 RUN corepack enable npm
 
-# Install OpenSSL and libc6-compat in the runtime (dev) stage as well
+# Install OpenSSL and libc6-compat in the runtime stage
+# These are still needed at runtime for Prisma's engine.
 RUN apk add --no-cache openssl libc6-compat
 
-# Set LD_PRELOAD for glibc compatibility in the runtime (dev) stage
+# Set LD_PRELOAD for glibc compatibility in the runtime stage
 ENV LD_PRELOAD=/lib/libc.so.6
 
-# Copy everything from the installer stage, including node_modules and generated Prisma client
-COPY --from=installer /usr/src/app/ ./
+# Copy node_modules and built application code from the 'builder' stage
+# This makes the final image smaller by not including build tools.
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/package*.json ./ 
+# Copy package files for 'npm run start'
+COPY --from=builder /usr/src/app/dist ./dist
+ # Assuming your build output goes to a 'dist' folder
+COPY --from=builder /usr/src/app/prisma ./prisma 
+# Copy Prisma schema and migrations for runtime usage
 
-# Expose the port your WebSocket service runs on
+# Run Prisma database migrations
+# This command runs *during the Docker image build* for the production stage.
+# Render injects DATABASE_URL during the build process, so Prisma can connect.
+RUN npx prisma migrate deploy
+
+# Expose the port your application listens on
 EXPOSE 8080
 
-CMD ["npm", "run", "dev"]
+# Command to start your production application
+CMD ["npm", "run", "start"]
