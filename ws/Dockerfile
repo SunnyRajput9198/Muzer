@@ -12,6 +12,10 @@ ENV LD_PRELOAD=/lib/libc.so.6
 # Render will pass the DATABASE_URL environment variable as this build argument.
 ARG DATABASE_URL
 
+# *** CRUCIAL FIX: Promote the build argument to an environment variable for this stage ***
+# This makes DATABASE_URL reliably available to subsequent RUN commands.
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Copy package.json and package-lock.json first to leverage Docker cache
 COPY package.json package-lock.json ./
 
@@ -26,9 +30,9 @@ COPY . .
 
 # Build your application (if you have a build step like TypeScript compilation),
 # then generate the Prisma client, and finally run Prisma database migrations.
-# We explicitly pass DATABASE_URL to Prisma commands because it's an ARG,
-# not a standard environment variable during the RUN step.
-RUN npm run build && DATABASE_URL=$DATABASE_URL npx prisma generate && DATABASE_URL=$DATABASE_URL npx prisma migrate deploy
+# DATABASE_URL is now available as a standard ENV variable due to the ENV instruction above.
+# So, we don't need to prefix `DATABASE_URL=$DATABASE_URL` here for the `npx` commands.
+RUN npm run build && npx prisma generate && npx prisma migrate deploy
 
 EXPOSE 8080
 
