@@ -1,68 +1,43 @@
-# Stage 1: Build & Install Dependencies (as 'builder')
-FROM node:20-alpine AS builder
+# Stage 1: Install dependencies
+FROM node:20-alpine AS installer
 
 WORKDIR /usr/src/app
-
-# Enable corepack for npm (if you use it)
 RUN corepack enable npm
 
 # Install OpenSSL and libc6-compat for Prisma engine compatibility on Alpine
 RUN apk add --no-cache openssl libc6-compat
 
-# Set LD_PRELOAD for glibc compatibility (important for Prisma on Alpine)
+# Set LD_PRELOAD for glibc compatibility (crucial for Prisma on Alpine)
 ENV LD_PRELOAD=/lib/libc.so.6
 
-# Declare DATABASE_URL as a build argument
-# This allows it to be passed from Render's build environment.
-ARG DATABASE_URL
-
-# Copy package.json and package-lock.json first to cache dependencies
+# Copy both package.json and package-lock.json for reproducible installs
 COPY package.json package-lock.json ./
 
-# Install dependencies cleanly and reproducibly
+# Clean and consistent install of dependencies according to package-lock.json
 RUN npm ci --ignore-scripts
 
-# Copy the rest of your application code (including schema.prisma and migrations)
 COPY . .
 
-# Run your application's build process (e.g., TypeScript compilation)
-# and then generate the Prisma client.
-# The DATABASE_URL is now available as a build argument.
-RUN npm run build && DATABASE_URL=$DATABASE_URL npx prisma generate
-
-# We will run `migrate deploy` in the production stage to ensure it's always fresh
-# or via an entrypoint. For simplicity, let's move it to the production stage as well.
+# Run postinstall if needed, which might generate Prisma client
+RUN npm run postinstall
 
 
-# Stage 2: Production Runtime Image (as 'production')
-FROM node:20-alpine AS production
+# Stage 2: Development server
+FROM node:20-alpine AS dev
 
 WORKDIR /usr/src/app
-
-# Enable corepack for npm in the production stage as well
 RUN corepack enable npm
 
-# Install OpenSSL and libc6-compat in the runtime stage
+# Install OpenSSL and libc6-compat in the runtime (dev) stage as well
 RUN apk add --no-cache openssl libc6-compat
 
-# Set LD_PRELOAD for glibc compatibility in the runtime stage
+# Set LD_PRELOAD for glibc compatibility in the runtime (dev) stage
 ENV LD_PRELOAD=/lib/libc.so.6
 
-# Copy node_modules and built application code from the 'builder' stage
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/package*.json ./ 
-# Copy package files for 'npm run start'
-COPY --from=builder /usr/src/app/dist ./dist
- # Assuming your build output goes to a 'dist' folder
-COPY --from=builder /usr/src/app/prisma ./prisma 
-# Copy Prisma schema and migrations
+# Copy everything from the installer stage, including node_modules and generated Prisma client
+COPY --from=installer /usr/src/app/ ./
 
-# Run Prisma database migrations
-# This command runs *during the Docker image build* for the production stage.
-# Render will inject DATABASE_URL into the build environment for this stage.
-RUN npx prisma migrate deploy
-
+# Expose the port your WebSocket service runs on
 EXPOSE 8080
 
-# Command to start your production application
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]
