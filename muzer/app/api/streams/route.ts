@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 //@ts-ignore
-import youtubesearchapi from "Youtube-api";
+import youtubesearchapi from "youtube-search-api";
 import { YT_REGEX } from "../../../lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth-options";
