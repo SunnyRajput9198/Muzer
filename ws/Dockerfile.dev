@@ -7,11 +7,14 @@ WORKDIR /usr/src/app
 RUN corepack enable npm
 
 # Install OpenSSL and libc6-compat for Prisma engine compatibility on Alpine
-# These are crucial for Prisma to work correctly on Alpine-based images.
 RUN apk add --no-cache openssl libc6-compat
 
 # Set LD_PRELOAD for glibc compatibility (important for Prisma on Alpine)
 ENV LD_PRELOAD=/lib/libc.so.6
+
+# Declare DATABASE_URL as a build argument
+# This allows it to be passed from Render's build environment.
+ARG DATABASE_URL
 
 # Copy package.json and package-lock.json first to cache dependencies
 COPY package.json package-lock.json ./
@@ -24,8 +27,11 @@ COPY . .
 
 # Run your application's build process (e.g., TypeScript compilation)
 # and then generate the Prisma client.
-# The order is important: build your app first, then generate Prisma client.
-RUN npm run build && npx prisma generate
+# The DATABASE_URL is now available as a build argument.
+RUN npm run build && DATABASE_URL=$DATABASE_URL npx prisma generate
+
+# We will run `migrate deploy` in the production stage to ensure it's always fresh
+# or via an entrypoint. For simplicity, let's move it to the production stage as well.
 
 
 # Stage 2: Production Runtime Image (as 'production')
@@ -37,28 +43,25 @@ WORKDIR /usr/src/app
 RUN corepack enable npm
 
 # Install OpenSSL and libc6-compat in the runtime stage
-# These are still needed at runtime for Prisma's engine.
 RUN apk add --no-cache openssl libc6-compat
 
 # Set LD_PRELOAD for glibc compatibility in the runtime stage
 ENV LD_PRELOAD=/lib/libc.so.6
 
 # Copy node_modules and built application code from the 'builder' stage
-# This makes the final image smaller by not including build tools.
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/package*.json ./ 
 # Copy package files for 'npm run start'
 COPY --from=builder /usr/src/app/dist ./dist
  # Assuming your build output goes to a 'dist' folder
 COPY --from=builder /usr/src/app/prisma ./prisma 
-# Copy Prisma schema and migrations for runtime usage
+# Copy Prisma schema and migrations
 
 # Run Prisma database migrations
 # This command runs *during the Docker image build* for the production stage.
-# Render injects DATABASE_URL during the build process, so Prisma can connect.
+# Render will inject DATABASE_URL into the build environment for this stage.
 RUN npx prisma migrate deploy
 
-# Expose the port your application listens on
 EXPOSE 8080
 
 # Command to start your production application
