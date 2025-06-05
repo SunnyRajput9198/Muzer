@@ -2,16 +2,17 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 //@ts-ignore
-import youtubesearchapi from "youtube-search-api";
+import youtubesearchapi from "Youtube-api";
 import { YT_REGEX } from "../../../lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth-options";
+import { Prisma } from "@prisma/client"; // Import Prisma for type utility
 
 
 const CreateStreamSchema = z.object({
   creatorId: z.string(),
   url: z.string(),
-  spaceId:z.string()
+  spaceId: z.string()
 });
 
 const MAX_QUEUE_LEN = 20;
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
         bigImg:
           thumbnails[thumbnails.length - 1].url ??
           "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
-        spaceId:data.spaceId
+        spaceId: data.spaceId
       },
     });
 
@@ -193,9 +194,34 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ---
+// ## Type Definition for Streams in GET Request
+// To resolve the `Binding element '_count' implicitly has an 'any' type` error,
+// we define a precise type for the stream objects returned by Prisma,
+// especially when including `_count` and the `upvotes` relation.
+// This type ensures TypeScript correctly understands the structure of `_count`
+// and the `upvotes` array.
+// ---
+
+type StreamWithAggregations = Prisma.StreamGetPayload<{
+  include: {
+    _count: {
+      select: {
+        upvotes: true;
+      };
+    };
+    upvotes: {
+      where: {
+        userId: string; // The userId will be passed dynamically
+      };
+    };
+  };
+}>;
+
 export async function GET(req: NextRequest) {
   const spaceId = req.nextUrl.searchParams.get("spaceId");
   const session = await getServerSession(authOptions);
+
   if (!session?.user.id) {
     return NextResponse.json(
       {
@@ -210,67 +236,70 @@ export async function GET(req: NextRequest) {
 
   if (!spaceId) {
     return NextResponse.json({
-        message: "Error"
+      message: "Error"
     }, {
-        status: 411
+      status: 411
     })
-}
+  }
 
   const [space, activeStream] = await Promise.all([
     db.space.findUnique({
       where: {
-          id: spaceId,
+        id: spaceId,
       },
       include: {
-          streams: {
-              include: {
-                  _count: {
-                      select: {
-                          upvotes: true
-                      }
-                  },
-                  upvotes: {
-                      where: {
-                          userId: session?.user.id
-                      }
-                  }
-
-              },
-              where:{
-                  played:false
-              }
-          },
-          _count: {
+        streams: {
+          include: {
+            _count: {
               select: {
-                  streams: true
+                upvotes: true
               }
-          },                
+            },
+            upvotes: {
+              where: {
+                userId: session?.user.id // This is correctly filtered by the current user
+              }
+            }
+
+          },
+          where: {
+            played: false
+          }
+        },
+        _count: {
+          select: {
+            streams: true
+          }
+        },
 
       }
-      
-  }),
-  db.currentStream.findFirst({
+
+    }),
+    db.currentStream.findFirst({
       where: {
-          spaceId: spaceId
+        spaceId: spaceId
       },
       include: {
-          stream: true
+        stream: true
       }
-  })
+    })
   ]);
 
-  const hostId =space?.hostId;
-  const isCreator = session.user.id=== hostId;
+  const hostId = space?.hostId;
+  const isCreator = session.user.id === hostId;
 
   return NextResponse.json({
-    streams: space?.streams.map(({_count, ...rest}) => ({
-        ...rest,
-        upvotes: _count.upvotes,
-        haveUpvoted: rest.upvotes.length ? true : false
-    })),
+    // We cast space?.streams to our defined type to inform TypeScript about its structure.
+    streams: (space?.streams as StreamWithAggregations[] | undefined)?.map(({ _count, upvotes, ...rest }) => ({
+      ...rest,
+      upvotes: _count.upvotes,
+      // `upvotes` here refers to the relation included in the query,
+      // so `upvotes.length` correctly checks if the current user has upvoted.
+      haveUpvoted: upvotes.length > 0
+    })) || [], // Provide a default empty array if streams is undefined
     activeStream,
     hostId,
     isCreator,
-    spaceName:space?.name
-});
+    spaceName: space?.name
+  });
 }
