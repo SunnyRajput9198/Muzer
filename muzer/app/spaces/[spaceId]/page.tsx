@@ -39,7 +39,6 @@ export default function Page({ params }: { params: SegmentParams }) {
         setLoadingSpace(false);
       }
     };
-
     fetchHostId();
   }, [spaceId]);
 
