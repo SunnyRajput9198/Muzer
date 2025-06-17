@@ -21,40 +21,35 @@ interface Space {
   name: string;
   startTime: Date | null;
 }
-//This code defines a React component named HomeView, likely for a web app where users can create, view, and delete "Spaces"
-export default function HomeView() {
-  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);//isCreateSpaceOpen: A boolean state that controls the visibility of the create space dialog.
-  const [spaceName, setSpaceName] = useState("");//spaceName: The name of the space.
-  const [spaces, setSpaces] = useState<Space[] | null>(null);//spaces: An array of Space objects, each representing a space.
-  const [loading, setIsLoading] = useState(false);//loading: A boolean state that indicates whether the spaces are being loaded.
 
-  // Sends a GET request to /api/spaces and updates the spaces state.
+export default function HomeView() {
+  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
+  const [spaceName, setSpaceName] = useState("");
+  const [spaces, setSpaces] = useState<Space[] | null>(null);
+  const [loading, setIsLoading] = useState(false);
+
   useEffect(() => {
     const fetchSpaces = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch("/api/spaces", {
-          method: "GET",
-        });
-
+        const response = await fetch("/api/spaces");
         const data = await response.json();
 
         if (!response.ok || !data.success) {
           throw new Error(data.message || "Failed to fetch spaces");
         }
 
-        const fetchedSpaces: Space[] = data.spaces;
-        setSpaces(fetchedSpaces);
+        setSpaces(data.spaces);
       } catch (error) {
         toast.error("Error fetching spaces");
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchSpaces();
   }, []);
 
-  //Sends a POST request with spaceName, updates the UI and shows a toast.
   const handleCreateSpace = async () => {
     setIsCreateSpaceOpen(false);
     try {
@@ -63,64 +58,44 @@ export default function HomeView() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          spaceName: spaceName,
-        }),
+        body: JSON.stringify({ spaceName }),
       });
-      const data = await response.json();
 
+      const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to create space");
       }
 
-      const newSpace = data.space;
-      setSpaces((prev) => {
-        const updatedSpaces: Space[] = prev ? [...prev, newSpace] : [newSpace];
-        return updatedSpaces;
-      });
+      setSpaces((prev) => (prev ? [...prev, data.space] : [data.space]));
       toast.success(data.message);
-    }
-    //@ts-nocheck
-    catch (error: any) {
+    } catch (error: any) {
       toast.error(error.message || "Error Creating Space");
     }
   };
-  // Deletes a space using a DELETE request with the spaceId query param.
+
   const handleDeleteSpace = useCallback(async (spaceId: string) => {
     try {
       const response = await fetch(`/api/spaces/?spaceId=${spaceId}`, {
         method: "DELETE",
       });
       const data = await response.json();
-
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to delete space");
       }
-      setSpaces((prev) => {
-        const updatedSpaces: Space[] = prev
-          ? prev.filter((space) => space.id !== spaceId)
-          : [];
-        return updatedSpaces;
-      });
+
+      setSpaces((prev) => prev?.filter((s) => s.id !== spaceId) || []);
       toast.success(data.message);
     } catch (error: any) {
       toast.error(error.message || "Error Deleting Space");
     }
-  }, [setSpaces, toast]); // Add dependencies if needed
+  }, []);
 
-  //ses useMemo to optimize rendering.
-  // Shows skeleton cards when loading.
-  // Shows SpacesCard components when data is ready.
   const renderSpaces = useMemo(() => {
     if (loading) {
       return (
         <>
-          <div className="dark mx-auto h-[500px] w-full py-4 sm:w-[450px] lg:w-[500px]">
-            <CardSkeleton />
-          </div>
-          <div className="dark mx-auto h-[500px] w-full py-4 sm:w-[450px] lg:w-[500px]">
-            <CardSkeleton />
-          </div>
+          <CardSkeleton />
+          <CardSkeleton />
         </>
       );
     }
@@ -134,63 +109,72 @@ export default function HomeView() {
         />
       ));
     }
+
+    return (
+      <p className="text-center text-muted-foreground text-xl mt-10">
+        No spaces available. Create one to get started!
+      </p>
+    );
   }, [loading, spaces, handleDeleteSpace]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-gray-900 to-black text-gray-200">
+    <div className="flex min-h-screen flex-col bg-[#121212]  text-white">
       <Appbar />
-      <div className="flex flex-grow flex-col items-center px-4 py-8">
-        <div className="h-36 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-900 bg-clip-text text-9xl font-bold text-transparent">
-          Spaces
-        </div>
-        <Button
-          onClick={() => {
-            setIsCreateSpaceOpen(true);
-          }}
-          className="mt-10 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
-        >
-          Create a new Space
-        </Button>
+      <div className="w-full px-8 pt-1 pb-12">
+        {/* Title */}
+        <h1 className="text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300 text-6xl md:text-7xl font-extrabold ">
+          My Spaces
+        </h1>
+        {/* CTA */}
+        <div className="flex justify-center mt-10">
+          <Button
+            onClick={() => setIsCreateSpaceOpen(true)}
+            className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 hover:from-yellow-500 hover:to-yellow-500 text-black px-6 py-3 text-lg rounded-xl shadow-lg shadow-yellow-500/20 transition duration-200"
+          >
+            + Create New Space
+          </Button>
 
-        <div className="mt-20 grid grid-cols-1 gap-8 p-4 md:grid-cols-2">
+        </div>
+
+
+        {/* Spaces Grid */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7 w-full">
           {renderSpaces}
         </div>
       </div>
+
+      {/* Dialog */}
       <Dialog open={isCreateSpaceOpen} onOpenChange={setIsCreateSpaceOpen}>
-        <DialogContent>
+        <DialogContent className="bg-zinc-900 text-white border border-zinc-700">
           <DialogHeader>
-            <DialogTitle className="mb-10 text-center">
-              Create new space
+            <DialogTitle className="text-2xl text-center font-semibold">
+              Create a New Space
             </DialogTitle>
-            <fieldset className="Fieldset">
-              <label
-                className="text-violet11 w-[90px] text-right text-xl font-bold"
-                htmlFor="name"
-              >
-                Name of the Space
-              </label>
-              <input
-                className="text-violet11 shadow-violet7 focus:shadow-violet8 mt-5 inline-flex h-[35px] w-full flex-1 items-center justify-center rounded-[4px] px-[10px] text-[15px] leading-none shadow-[0_0_0_1px] outline-none focus:shadow-[0_0_0_2px]"
-                id="name"
-                defaultValue="Pedro Duarte"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setSpaceName(e.target.value);
-                }}
-              />
-            </fieldset>
           </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateSpaceOpen(false)}
-            >
+
+          <div className="mt-6">
+            <label htmlFor="spaceName" className="block mb-2 text-sm font-medium">
+              Name of the Space
+            </label>
+            <input
+              id="spaceName"
+              type="text"
+              placeholder="e.g. Late Night Vibes"
+              value={spaceName}
+              onChange={(e) => setSpaceName(e.target.value)}
+              className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+            />
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsCreateSpaceOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleCreateSpace}
               className="bg-purple-600 text-white hover:bg-purple-700"
             >
-              Create Space
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>
