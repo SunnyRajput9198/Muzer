@@ -21,12 +21,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-
-//This code is for a streaming interface that allows users to share and manage YouTube videos in a "queue" for playback, 
-// similar to a music player queue. The stream interface supports functionality like adding YouTube videos,
-//  upvoting/downvoting them, sharing the stream via social media, removing songs, and emptying the queue.
-//  It integrates several React features and components, such as state management, hooks, and API interactions. Let's break it down step by step:
-
 interface Video {
   id: string;
   type: string;
@@ -281,17 +275,8 @@ export default function StreamView({
       toast.error("An error occurred while removing the song");
     }
   };
-
-  //API interactions
-  //   GET /api/streams/: Fetches the list of videos in the stream, the current active video, and whether the user is the creator.
-  // POST /api/streams/: Adds a new video (YouTube link) to the queue.
-  // POST /api/streams/upvote and /api/streams/downvote: Handle upvoting and downvoting of a video.
-  // POST /api/streams/next: Skips to the next video in the queue.
-  // POST /api/streams/empty-queue: Empties the entire queue (for the creator).
-  // DELETE /api/streams/remove: Removes a specific song from the queue.
-
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-200">
+    <div className="flex flex-col min-h-screen bg-[#121212] text-gray-200">
       <Appbar />
       <div className='mx-auto text-2xl bg-gradient-to-r rounded-lg from-indigo-600 to-violet-800 font-bold'>
         {spaceName}
@@ -314,9 +299,6 @@ export default function StreamView({
                   <DropdownMenuContent className="w-48 sm:max-w-md">
                     <DropdownMenuLabel>Share to Social Media</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {/* his component is a part of a social media sharing feature. When a user clicks on the "Instagram" option from the dropdown menu,
-     the handleShare function will be triggered with 'instagram' as an argument. This, in turn, would handle the sharing logic,
-      typically by copying the link to the clipboard since Instagram doesn't allow direct URL sharing. */}
                     <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
                       <div className="flex items-center space-x-2">
                         <MessageCircle className="h-6 w-6 text-green-500" />
@@ -350,7 +332,7 @@ export default function StreamView({
                 {isCreator && (
                   <Button
                     onClick={() => setIsEmptyQueueDialogOpen(true)}
-                    className="bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium flex items-center px-4 py-2 rounded-md shadow-md transition duration-200 ease-in-out hover:scale-[1.02] active:scale-100"
                   >
                     <Trash2 className="mr-2 h-4 w-4" /> Empty Queue
                   </Button>
@@ -427,12 +409,7 @@ export default function StreamView({
               </div>
             )}
           </div>
-          {/* The handleVote function allows users to upvote or downvote videos in the queue. */}
-          {/* Add Video: Users can add a video to the queue by pasting a YouTube link, and the video preview is shown once the link is valid. */}
-          {/* The component has two main sections:
-Add a Song: Allows users to paste a YouTube link, preview the video, and add it to a queue.
-Now Playing: Displays the currently playing video, a thumbnail of it if not playing, and a button to play the next video.
-Dynamic Behavior: The layout adjusts based on the states currentVideo, playVideo, and loading. It ensures a smooth user experience by updating content dynamically (e.g., showing loading states and video previews). */}
+       
           <div className="col-span-2 order-1 lg:order-2">
             <div className="space-y-4">
               <Card className="bg-gray-800 border-gray-700 shadow-lg">

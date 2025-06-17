@@ -6,7 +6,6 @@ import { Play } from "lucide-react";
 import YouTubePlayer from "youtube-player";
 import Image from "next/image";
 
-
 type Props = {
   playVideo: boolean;
   currentVideo: Video | null;
@@ -23,65 +22,65 @@ export default function NowPlaying({
   const videoPlayerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!videoPlayerRef.current || !currentVideo) {
-      return;
-    }
+    if (!videoPlayerRef.current || !currentVideo) return;
+
     const player = YouTubePlayer(videoPlayerRef.current);
-
-    // 'loadVideoById' is queued until the player is ready to receive API calls.
     player.loadVideoById(currentVideo.extractedId);
-
-    // 'playVideo' is queue until the player is ready to received API calls and after 'loadVideoById' has been called.
     player.playVideo();
-    function eventHandler(event: any) {
-      console.log(event);
-      console.log(event.data);
+
+    const eventHandler = (event: any) => {
       if (event.data === 0) {
         playNext();
       }
-    }
+    };
+
     player.on("stateChange", eventHandler);
     return () => {
       player.destroy();
     };
-  }, [currentVideo, videoPlayerRef]);
+  }, [currentVideo]);
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Now Playing</h2>
-      <Card>
-        <CardContent className="p-4">
+      <h2 className="text-2xl font-bold text-white">Now Playing</h2>
+      <Card className="bg-gray-800 border border-gray-700 shadow-md rounded-xl overflow-hidden">
+        <CardContent className="p-4 space-y-3">
           {currentVideo ? (
-            <div>
-              {playVideo ? (
-                <>
-                  <div ref={videoPlayerRef} className="w-full" />
-                </>
-              ) : (
-                <>
-                  <Image
-                    height={288}
-                    width={288}
-                    alt={currentVideo.bigImg}
-                    src={currentVideo.bigImg}
-                    className="h-72 w-full rounded object-cover"
-                  />
-                  <p className="mt-2 text-center font-semibold">
-                    {currentVideo.title}
-                  </p>
-                </>
-              )}
-            </div>
+            playVideo ? (
+              <div
+                ref={videoPlayerRef}
+                className="w-full aspect-video rounded overflow-hidden"
+              />
+            ) : (
+              <>
+                <Image
+                  height={288}
+                  width={512}
+                  alt={currentVideo.title}
+                  src={currentVideo.bigImg}
+                  className="w-full aspect-video object-cover rounded"
+                />
+                <p className="mt-2 text-center font-semibold text-white text-lg truncate">
+                  {currentVideo.title}
+                </p>
+              </>
+            )
           ) : (
-            <p className="py-8 text-center">No video playing</p>
+            <p className="py-8 text-center text-gray-400">No video playing</p>
           )}
         </CardContent>
       </Card>
+
       {playVideo && (
-        <Button disabled={playNextLoader} onClick={playNext} className="w-full">
-          <Play className="mr-2 h-4 w-4" />{" "}
-          {playNextLoader ? "Loading..." : "Play next"}
-        </Button>
+       <Button
+  disabled={playNextLoader}
+  onClick={playNext}
+  className="w-full px-6 py-3 text-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center"
+>
+  <Play className="mr-3 h-5 w-5" />
+  {playNextLoader ? "Loading..." : "Play next"}
+</Button>
+
       )}
     </div>
   );

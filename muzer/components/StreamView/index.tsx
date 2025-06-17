@@ -114,7 +114,7 @@ export default function StreamView({
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#121212]">
       <Appbar isSpectator={!playVideo} />
       <div className="mx-auto rounded-lg p-2 bg-gradient-to-r from-indigo-600 to-violet-800 text-2xl font-bold">
         {spaceName}

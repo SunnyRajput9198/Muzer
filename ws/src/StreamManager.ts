@@ -417,42 +417,52 @@ export class RoomManager {
     this.publishNewVote(spaceId, streamId, vote as "upvote" | "downvote", userId);
   }
 
-  async castVote(
-    userId: string,
-    streamId: string,
-    vote: "upvote" | "downvote",
-    spaceId: string
-  ) {
-    console.log(process.pid + " castVote");
-    const space = this.spaces.get(spaceId);
-    const currentUser = this.users.get(userId);
-    const creatorId = this.spaces.get(spaceId)?.creatorId;
-    const isCreator = currentUser?.userId === creatorId;
+ async castVote(
+  userId: string,
+  streamId: string,
+  vote: "upvote" | "downvote",
+  spaceId: string
+) {
+  console.log(process.pid + " castVote");
 
-    if (!space || !currentUser) {
-      return;
-    }
-    if (!isCreator) {
-      const spaceVotes = this.lastVoted.get(spaceId);
-      const lastVotedTime = spaceVotes?.get(userId);
+  const space = this.spaces.get(spaceId);
+  const currentUser = this.users.get(userId);
+  const creatorId = space?.creatorId;
 
-      if (lastVotedTime && new Date().getTime() - lastVotedTime < TIME_SPAN_FOR_VOTE) {
-        currentUser?.ws.forEach((ws) => {
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              data: {
-                message: "You can vote after 20 mins",
-              },
-            })
-          );
-        });
-        return;
-      }
-    }
+  if (!space || !currentUser) return;
 
-    await this.adminCastVote(creatorId as string, userId, streamId, vote, spaceId);
+  const isCreator = userId === creatorId;
+
+  // 🧠 Initialize or fetch voting history for the space
+  let spaceVotes = this.lastVoted.get(spaceId);
+  if (!spaceVotes) {
+    spaceVotes = new Map();
+    this.lastVoted.set(spaceId, spaceVotes);
   }
+
+  const lastVotedTime = spaceVotes.get(userId);
+  const now = Date.now();
+
+  if (!isCreator && lastVotedTime && now - lastVotedTime < TIME_SPAN_FOR_VOTE) {
+    currentUser.ws.forEach((ws) => {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          data: {
+            message: "You can vote after 20 mins",
+          },
+        })
+      );
+    });
+    return;
+  }
+
+  // ✅ Save latest vote timestamp for ALL users
+  spaceVotes.set(userId, now);
+
+  await this.adminCastVote(creatorId!, userId, streamId, vote, spaceId);
+}
+
 
   publishNewStream(spaceId: string, data: any) {
     console.log(process.pid + ": publishNewStream");

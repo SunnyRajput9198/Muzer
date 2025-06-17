@@ -22,11 +22,6 @@ export default function Appbar({ isSpectator = false }: AppbarProps) {
           </div>
           <span className="text-xl font-bold text-white">Muzer{isSpectator ? " (Spectator Mode)" : ""}</span>
         </div>
-        <div className="hidden md:flex items-center space-x-8">
-          <Link href="#features" className="text-gray-300 hover:text-white transition-colors">Features</Link>
-          <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</Link>
-          <Link href="#about" className="text-gray-300 hover:text-white transition-colors">About</Link>
-        </div>
 
         {/* Navigation */}
         <nav className="relative z-50 flex items-center justify-between p-6 md:p-8">

@@ -20,10 +20,10 @@ type Props = {
   creatorId: string;
   userId: string;
   isCreator: boolean;
-  spaceId:string
+  spaceId: string
 };
 
-export default function Queue({ queue, isCreator, creatorId, userId,spaceId }: Props) {
+export default function Queue({ queue, isCreator, creatorId, userId, spaceId }: Props) {
   const { sendMessage } = useSocket();
   const [isEmptyQueueDialogOpen, setIsEmptyQueueDialogOpen] = useState(false);
   const [parent] = useAutoAnimate();
@@ -53,7 +53,7 @@ export default function Queue({ queue, isCreator, creatorId, userId,spaceId }: P
 
   const emptyQueue = async () => {
     sendMessage("empty-queue", {
-      spaceId:spaceId,
+      spaceId: spaceId,
     });
     setIsEmptyQueueDialogOpen(false);
   };
@@ -68,21 +68,31 @@ export default function Queue({ queue, isCreator, creatorId, userId,spaceId }: P
 
   return (
     <>
-      <div className="col-span-3">
+      <div className="col-span-3 ">
         <div className="space-y-4">
           <div className="flex flex-col items-start justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
-            <h2 className="text-3xl font-bold">Upcoming Songs</h2>
-            <div className="flex space-x-2">
-              <Button onClick={handleShare}>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-purple-400 tracking-tight mb-4">
+              Upcoming Songs
+            </h2>
+
+
+            <div className="flex space-x-4">
+              <Button
+                onClick={handleShare}
+                className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white hover:brightness-110 transition-all duration-300 font-semibold px-4 py-2 rounded-lg shadow-md"
+              >
                 <Share2 className="mr-2 h-4 w-4" /> Share
               </Button>
+
               {isCreator && (
                 <Button
                   onClick={() => setIsEmptyQueueDialogOpen(true)}
-                  variant="secondary"
+                  className="bg-gray-800 hover:bg-red-600 text-white border border-red-500 hover:border-transparent transition-all duration-200 font-semibold px-4 py-2 rounded-md shadow"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Empty Queue
+                  <Trash2 className="mr-2 h-4 w-4 text-red-400 group-hover:text-white transition-colors" />
+                  Empty Queue
                 </Button>
+
               )}
             </div>
           </div>
@@ -94,48 +104,63 @@ export default function Queue({ queue, isCreator, creatorId, userId,spaceId }: P
             </Card>
           )}
           <div className="space-y-4" ref={parent}>
-          {queue.map((video) => (
-            <Card key={video.id} className="">
-              <CardContent className="flex items-center space-x-4 p-4">
-                <Image
-                height={80}
-                width={128}
-                  src={video.smallImg}
-                  alt={`Thumbnail for ${video.title}`}
-                  className="w-32 h-20 rounded object-cover"
-                />
-                <div className="flex-grow">
-                  <h3 className="font-semibold">{video.title}</h3>
-                  <div className="mt-2 flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        handleVote(video.id, video.haveUpvoted ? false : true)
-                      }
-                      className="flex items-center space-x-1"
-                    >
-                      {video.haveUpvoted ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4" />
-                      )}
-                      <span>{video.upvotes}</span>
-                    </Button>
-                    {isCreator && (
+            <div
+              ref={parent}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+            >
+              {queue.map((video) => (
+                <Card
+                  key={video.id}
+                  className="bg-[#2c2c2c] border border-gray-700 relative group overflow-hidden"
+                >
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-white truncate max-w-full">
+                      {video.title}
+                    </h3>
+
+                    {/* Buttons below the title */}
+                    <div className="mt-4 flex items-center space-x-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => removeSong(video.id)}
+                        onClick={() => handleVote(video.id, !video.haveUpvoted)}
                       >
-                        <X className="h-4 w-4" />
+                        {video.haveUpvoted ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
+                        <span className="ml-1">{video.upvotes}</span>
                       </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                      {isCreator && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeSong(video.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Thumbnail shown on hover */}
+                    <Image
+                      height={100}
+                      width={200}
+                      src={video.smallImg}
+                      alt={`Thumbnail for ${video.title}`}
+
+                      className="absolute bottom-2 right-2 w-40 rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 border border-white/10 shadow-lg"
+
+                    />
+                  </CardContent>
+
+                </Card>
+
+              ))}
+            </div>
+
           </div>
         </div>
       </div>
