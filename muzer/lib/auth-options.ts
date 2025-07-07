@@ -1,20 +1,17 @@
-import { NextAuthOptions, Session } from "next-auth";
+import type { NextAuthOptions} from "next-auth";
 import bcrypt from "bcryptjs";
-import { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-
+import { generateAppToken } from "@/lib/auth-utils"; // ✅ Adjust the path if needed
 import { emailSchema, passwordSchema } from "../schema/cridentials-schema";
 import { PrismaClientInitializationError } from "@prisma/client/runtime/library";
 import { PrismaClient } from "@prisma/client";
-
-
 const prisma =new PrismaClient();
 // console.log("DEBUG: process.env.NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
 // console.log("DEBUG: process.env.GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID);
 // console.log("DEBUG: process.env.GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET);
 // console.log("DEBUG: process.env.NEXTAUTH_SECRET:", process.env.NEXTAUTH_SECRET);
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -33,17 +30,14 @@ export const authOptions = {
         }
    // Validate email using Zod schema
         const emailValidation = emailSchema.safeParse(credentials.email);
-
         if (!emailValidation.success) {
           throw new Error("Invalid email");
         }
 // Validate password using Zod schema
         const passwordValidation = passwordSchema.safeParse(credentials.password);
-
         if (!passwordValidation.success) {
           throw new Error(passwordValidation.error.issues[0].message);
         }
-
         try {
           // Try finding user in DB by email
           const user = await prisma.user.findUnique({
@@ -54,7 +48,6 @@ export const authOptions = {
 // If user doesn't exist, register new one
           if (!user) {
             const hashedPassword = await bcrypt.hash(passwordValidation.data, 10);
-
             const newUser = await prisma.user.create({
               data: {
                 email: emailValidation.data,
@@ -62,7 +55,6 @@ export const authOptions = {
                 provider: "Credentials"
               }
             });
-
             return newUser;
           }
 // If user exists but doesn't have password At that time, no password was set — because Google handles authentication.
@@ -81,13 +73,11 @@ export const authOptions = {
             });
             return authUser;
           }
-// Compare provided password with stored hash
+        // Compare provided password with stored hash
           const passwordVerification = await bcrypt.compare(passwordValidation.data, user.password);
-
           if (!passwordVerification) {
             throw new Error("Invalid password");
           }
-
           return user;
         } catch (error) {
           if (error instanceof PrismaClientInitializationError) {
@@ -96,7 +86,6 @@ export const authOptions = {
           // console.log(error);
           throw error;
         }
-
       },
     })
   ],
@@ -114,72 +103,62 @@ export const authOptions = {
   },
    // Callback functions to control JWT/session logic
   callbacks: {
-     // Called when JWT is created or updated// type of callbacks func 1.jwt() – called when JWT is created or updated 
-    async jwt({ token, account, profile }) {
-      if (account && profile) {
-        token.email = profile.email as string;
-        token.id = account.access_token;
-      }
-      return token;
-    },
-      // Called whenever a session is checked or created
-    async session({ session, token }: {
-      session: Session,
-      token: JWT;
-    }) {
-      try {
-        // Add user ID to session.user using token.email
+  async jwt({ token, account, user }) {
+    // Set user ID for session
+    if (user?.id) {
+      token.id = user.id;
+    }
+
+    // ✅ Generate your custom app token (only once)
+    if (!token.appToken && token.id) {
+      const creatorId = user.id; // You can modify this logic
+      const appToken = generateAppToken({ userId: token.id, creatorId });
+      token.appToken = appToken;
+    }
+
+    return token;
+  },
+
+  async session({ session, token }) {
+    // Add user ID to session
+    console.log("✅ JWT in session callback:", token);
+    if (token.id) session.user.id = token.id;
+
+    // ✅ Make appToken available to client-side code
+    if (token.appToken) {
+      session.user.token = token.appToken;
+    }
+
+    return session;
+  },
+
+  async signIn({ account, profile }) {
+    try {
+      if (account?.provider === "google") {
         const user = await prisma.user.findUnique({
           where: {
-            email: token.email
+            email: profile?.email!,
           }
         });
 
-        if (user) {
-          session.user.id = user.id;
-        }
-      } catch (error) {
-        if (error instanceof PrismaClientInitializationError) {
-          throw new Error("Internal server error");
-        }
-        console.log(error);
-        throw error;
-      }
-      return session;
-    },
-    //signIn is also a type of callback function// Triggered when user signs in (e.g., via Google)
-    async signIn({ account, profile }) {
-
-      try {
-        // Check if user already exists in DB
-        if (account?.provider === "google") {
-
-          const user = await prisma.user.findUnique({
-            where: {
+        if (!user) {
+          await prisma.user.create({
+            data: {
               email: profile?.email!,
+              name: profile?.name || undefined,
+              provider: "Google"
             }
           });
-  // If user doesn't exist, create new user from Google profile
-          if (!user) {
-            const newUser = await prisma.user.create({
-              data: {
-                email: profile?.email!,
-                name: profile?.name || undefined,
-                provider: "Google"
-              }
-            });
-          }
         }
-        return true;
-      } catch (error) {
-        console.log(error);
-        //throw error;
-        return false;
       }
+      return true;
+    } catch (error) {
+      console.log(error);
+      return false;
     }
   }
-} satisfies NextAuthOptions;
-
+}
+  }
 /* Explanation:read if you have time
 1. **Imports:**
    - `NextAuthOptions`, `Session`, `JWT`: Types from `next-auth` that are used to define the options and types for authentication and sessions.

@@ -12,6 +12,7 @@ const MAX_QUEUE_LENGTH = 20;
 export class RoomManager {
   private static instance: RoomManager;
   public spaces: Map<string, Space>;
+  public wsToUser: Map<WebSocket, string> = new Map(); // Add this
   public users: Map<string, User>;
   public prisma: PrismaClient;
   public wstoSpace: Map<WebSocket, string>;
@@ -38,22 +39,25 @@ export class RoomManager {
     return RoomManager.instance;
   }
 
-  async createRoom(spaceId: string, creatorId: string) {
-    console.log(process.pid + ": createRoom: ", { spaceId, creatorId });
-    if (!this.spaces.has(spaceId)) {
-      this.spaces.set(spaceId, {
-        users: new Map<string, User>(),
-        creatorId: creatorId,
-      });
-      this.lastVoted.set(spaceId, new Map());
-      this.queueLength.set(spaceId, 0);
-      this.lastAdded.set(spaceId, new Map());
-      this.blockedSongs.set(spaceId, new Set());
-    }
+ async createRoom(spaceId: string, creatorId: string) {
+  if (!this.spaces.has(spaceId)) {
+    this.spaces.set(spaceId, {
+      users: new Map<string, User>(),
+      creatorId,
+    });
+    this.lastVoted.set(spaceId, new Map());
+    this.queueLength.set(spaceId, 0);
+    this.lastAdded.set(spaceId, new Map());
+    this.blockedSongs.set(spaceId, new Set());
+    console.log(`✅ Room created with creatorId: ${creatorId}`);
   }
+}
+
 
   async addUser(userId: string, ws: WebSocket, token: string) {
     let user = this.users.get(userId);
+this.wsToUser.set(ws, userId); // Track which user a WebSocket belongs to
+
     if (!user) {
       this.users.set(userId, {
         userId,
@@ -63,6 +67,7 @@ export class RoomManager {
     } else {
       if (!user.ws.some((existingWs) => existingWs === ws)) {
         user.ws.push(ws);
+        
       }
     }
   }
@@ -78,30 +83,27 @@ export class RoomManager {
 
     let space = this.spaces.get(spaceId);
     let user = this.users.get(userId);
-
     if (!space) {
       await this.createRoom(spaceId, creatorId);
       space = this.spaces.get(spaceId);
     }
 
-    if (!user) {
-      await this.addUser(userId, ws, token);
-      user = this.users.get(userId);
-    } else {
-      if (!user.ws.some((existingWs) => existingWs === ws)) {
-        user.ws.push(ws);
-      }
-    }
+   await this.addUser(userId, ws, token); // Always call this
+user = this.users.get(userId);         // Then get updated user
+
 
     this.wstoSpace.set(ws, spaceId);
 
     if (space && user) {
       space.users.set(userId, user);
-      this.spaces.set(spaceId, {
-        ...space,
-        users: new Map(space.users),
-        creatorId: creatorId,
-      });
+     this.spaces.set(spaceId, {
+  ...space,
+  users: new Map(space.users),
+  creatorId: space.creatorId ?? creatorId, // 👈 Fix: preserve existing creatorId
+  
+});
+console.log(`👑 creatorId in space ${spaceId}:`, this.spaces.get(spaceId)?.creatorId);
+
     }
   }
 
@@ -195,87 +197,6 @@ export class RoomManager {
         );
       });
     });
-  }
-
-  async payAndPlayNext(spaceId: string, userId: string, url: string) {
-    const creatorId = this.spaces.get(spaceId)?.creatorId;
-    console.log("payAndPlayNext", creatorId, userId);
-    let targetUser = this.users.get(userId);
-    if (!targetUser || !creatorId) {
-      return;
-    }
-
-    const extractedId = getVideoId(url);
-
-    if (!extractedId) {
-      targetUser?.ws.forEach((ws) => {
-        ws.send(
-          JSON.stringify({
-            type: "error",
-            data: { message: "Invalid YouTube URL" },
-          })
-        );
-      });
-      return;
-    }
-
-    const res = await youtubesearchapi.GetVideoDetails(extractedId);
-
-    if (res.thumbnail) {
-      const thumbnails = res.thumbnail.thumbnails;
-      thumbnails.sort((a: { width: number }, b: { width: number }) =>
-        a.width < b.width ? -1 : 1
-      );
-      const stream = await this.prisma.stream.create({
-        data: {
-          id: crypto.randomUUID(),
-          userId: creatorId,
-          url: url,
-          extractedId,
-          type: "Youtube",
-          addedBy: userId,
-          title: res.title ?? "Cant find video",
-          smallImg:
-            (thumbnails.length > 1
-              ? thumbnails[thumbnails.length - 2].url
-              : thumbnails[thumbnails.length - 1].url) ??
-            "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
-          bigImg:
-            thumbnails[thumbnails.length - 1].url ??
-            "https://cdn.pixabay.com/photo/2024/02/28/07/42/european-shorthair-8601492_640.jpg",
-          spaceId: spaceId,
-        },
-      });
-      // update currentStream
-      await Promise.all([
-        this.prisma.currentStream.upsert({
-          where: {
-            spaceId: spaceId,
-          },
-          update: {
-            spaceId: spaceId,
-            userId,
-            streamId: stream.id,
-          },
-          create: {
-            id: crypto.randomUUID(),
-            spaceId: spaceId,
-            userId,
-            streamId: stream.id,
-          },
-        }),
-        this.prisma.stream.update({
-          where: {
-            id: stream.id,
-          },
-          data: {
-            played: true,
-            playedTs: new Date(),
-          },
-        }),
-      ]);
-      this.publishPlayNext(spaceId);
-    }
   }
 
   async adminPlayNext(spaceId: string, userId: string) {
@@ -384,7 +305,7 @@ export class RoomManager {
     });
   }
 
-  async adminCastVote(
+  async persistVote(
     creatorId: string,
     userId: string,
     streamId: string,
@@ -417,7 +338,7 @@ export class RoomManager {
     this.publishNewVote(spaceId, streamId, vote as "upvote" | "downvote", userId);
   }
 
- async castVote(
+async castVote(
   userId: string,
   streamId: string,
   vote: "upvote" | "downvote",
@@ -431,9 +352,29 @@ export class RoomManager {
 
   if (!space || !currentUser) return;
 
-  const isCreator = userId === creatorId;
+  // 🧠 Validate stream belongs to this space
+  const stream = await this.prisma.stream.findFirst({
+    where: {
+      id: streamId,
+      spaceId: spaceId,
+    },
+  });
 
-  // 🧠 Initialize or fetch voting history for the space
+  if (!stream) {
+    currentUser.ws.forEach((ws) => {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          data: {
+            message: "Stream not found in this space.",
+          },
+        })
+      );
+    });
+    return;
+  }
+
+  // 🧠 Rate limit (20 min) for non-creator users
   let spaceVotes = this.lastVoted.get(spaceId);
   if (!spaceVotes) {
     spaceVotes = new Map();
@@ -442,6 +383,7 @@ export class RoomManager {
 
   const lastVotedTime = spaceVotes.get(userId);
   const now = Date.now();
+  const isCreator = userId === creatorId;
 
   if (!isCreator && lastVotedTime && now - lastVotedTime < TIME_SPAN_FOR_VOTE) {
     currentUser.ws.forEach((ws) => {
@@ -449,7 +391,7 @@ export class RoomManager {
         JSON.stringify({
           type: "error",
           data: {
-            message: "You can vote after 20 mins",
+            message: "You can vote again after 20 minutes.",
           },
         })
       );
@@ -457,12 +399,11 @@ export class RoomManager {
     return;
   }
 
-  // ✅ Save latest vote timestamp for ALL users
   spaceVotes.set(userId, now);
 
-  await this.adminCastVote(creatorId!, userId, streamId, vote, spaceId);
+  // ✅ All users (including admin) vote using this
+  await this.persistVote(creatorId!, userId, streamId, vote, spaceId);
 }
-
 
   publishNewStream(spaceId: string, data: any) {
     console.log(process.pid + ": publishNewStream");
@@ -677,6 +618,8 @@ export class RoomManager {
         });
       }
     }
+    this.wsToUser.delete(ws); // Clean up mapping
+
   }
 }
 

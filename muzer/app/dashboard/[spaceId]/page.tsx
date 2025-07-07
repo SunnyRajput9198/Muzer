@@ -74,6 +74,7 @@ export default function Page({ params }: PageProps) {
                 token,
                 spaceId,
                 userId: user.id,
+                creatorId: creatorId!,
               },
             })
           );

@@ -43,34 +43,39 @@ export default function Page({ params }: { params: SegmentParams }) {
   }, [spaceId]);
 
   useEffect(() => {
-    const joinRoom = async () => {
-      if (!user?.id || !creatorId || hasJoinedRoom) return;
+   const joinRoom = async () => {
+  if (!user?.id || !creatorId || hasJoinedRoom) return;
 
-      try {
-        const res = await fetch("/api/generate-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorId,
-            userId: user.id,
-          }),
-        });
+  try {
+    const res = await fetch("/api/generate-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ creatorId }),
+    });
 
-        const data = await res.json();
+    const data = await res.json();
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || "Token generation failed");
-        }
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Token generation failed");
+    }
 
-        const token = data.token;
-        setUser({ ...user, token });
-        sendMessage("join-room", { token, spaceId, userId: user.id });
-        setHasJoinedRoom(true);
-      } catch (error: any) {
-        console.error("Error generating token or joining room:", error);
-        setTokenFetchError(error.message || "Failed to generate token");
-      }
-    };
+    const token = data.token;
+    setUser({ ...user, token });
+
+    sendMessage("join-room", {
+      token,
+      spaceId,
+      userId: user.id,
+      creatorId,
+    });
+
+    setHasJoinedRoom(true);
+  } catch (error: any) {
+    console.error("Error generating token or joining room:", error);
+    setTokenFetchError(error.message || "Failed to generate token");
+  }
+};
+
 
     joinRoom();
   }, [user?.id, creatorId, spaceId, sendMessage, setUser, hasJoinedRoom]);

@@ -2,13 +2,18 @@ import { WebSocket, WebSocketServer } from "ws";
 import cluster from "cluster";
 import http from "http";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
 import { sendError } from "./utils";
+import { verifyAppToken } from "../../muzer/lib/auth-utils"; // adjust path if needed
+
 // import os from "os"; // Not used, so commented out
 
 import { RoomManager } from "./StreamManager"; // Assuming this is the correct path
-
-dotenv.config();
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+if (!process.env.JWT_SECRET_KEY) {
+  console.error("❌ JWT_SECRET_KEY is missing in .env");
+  process.exit(1);
+}
 const cors = 1; // os.cpus().length  // for vertical scaling.  Adjust as needed.
 
 if (cluster.isPrimary) {
@@ -60,31 +65,42 @@ async function handleConnection(ws: WebSocket) {
   });
 }
 
-async function handleJoinRoom(ws: WebSocket, data: Data) {
-    console.log("data.token", data.token);
-    jwt.verify(
-        data.token,
-        process.env.NEXTAUTH_SECRET as string,
-        (err: any, decoded: any) => {
-            if (err) {
-                console.error("JWT verification failed:", err);
-                sendError(ws, "Authentication failed: Invalid token.");
-            } else if (!decoded || !decoded.creatorId || !decoded.userId) {
-                console.error("Decoded token missing required fields:", decoded);
-                sendError(ws, "Authentication failed: Token missing user/creator info.");
-            } else {
-                console.log("Decoded Token:", decoded);
-                RoomManager.getInstance().joinRoom(
-                    data.spaceId,
-                    decoded.creatorId,
-                    decoded.userId,
-                    ws,
-                    data.token
-                );
-            }
-        }
-    );
+async function handleJoinRoom(ws: WebSocket, data: Partial<Data>) {
+  if (!data?.token) {
+    console.error("❌ Missing token in join-room message:", data);
+    sendError(ws, "Authentication failed: No token provided.");
+    ws.close();
+    return;
+  }
+
+  const decoded = verifyAppToken(data.token,process.env.JWT_SECRET_KEY);
+  if (!decoded) {
+    console.error("❌ Invalid or expired token.");
+    sendError(ws, "Authentication failed: Invalid or expired token.");
+    ws.close();
+    return;
+  }
+
+  const { userId, creatorId } = decoded;
+  if (!userId || !creatorId) {
+    console.error("❌ Token missing required fields:", decoded);
+    sendError(ws, "Authentication failed: Token missing user or creator info.");
+    ws.close();
+    return;
+  }
+
+  console.log("✅ Token verified for user:", userId);
+
+  RoomManager.getInstance().joinRoom(
+    data.spaceId!,
+    creatorId,
+    userId,
+    ws,
+    data.token
+  );
 }
+
+
 async function processUserAction(type: string, data: Data) {
   switch (type) {
     case "cast-vote":
@@ -116,28 +132,22 @@ async function processUserAction(type: string, data: Data) {
       RoomManager.getInstance().adminEmptyQueue(data.spaceId);
       break;
 
-    case "pay-and-play-next":
-      await RoomManager.getInstance().payAndPlayNext(
-        data.spaceId,
-        data.userId,
-        data.url
-      );
-      break;
-
     default:
       console.warn("Unknown message type:", type);
   }
 }
 async function handleUserAction(ws: WebSocket, type: string, data: Data) {
-  const user = RoomManager.getInstance().users.get(data.userId);
+ const manager = RoomManager.getInstance();
+const actualUserId = manager.wsToUser.get(ws);
 
-  if (user && user.ws.some((existingWs) => existingWs === ws)) {
-    console.log(`handleUserAction - User ${data.userId} authorized for action: ${type}`);
-    await processUserAction(type, data);
-  } else {
-    console.warn(`Unauthorized action (${type}) attempted by user ${data.userId} or invalid WebSocket.`);
-    sendError(ws, "You are unauthorized to perform this action");
-  }
+if (actualUserId === data.userId) {
+  console.log(`✅ Authorized: ${data.userId} for ${type}`);
+  await processUserAction(type, data);
+} else {
+  console.warn(`❌ Unauthorized action (${type}) by user ${data.userId} (expected: ${actualUserId})`);
+  sendError(ws, "You are unauthorized to perform this action");
+}
+
 }
 
 async function main() {
