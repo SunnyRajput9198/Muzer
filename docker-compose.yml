@@ -36,8 +36,8 @@ services:
     container_name: websockets
     restart: always
     build:
-      context: ./ws
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: ws/Dockerfile.dev
     env_file:
       - ./ws/.env
     ports:

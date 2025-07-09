@@ -3,7 +3,7 @@ import cluster from "cluster";
 import http from "http";
 import dotenv from "dotenv";
 import { sendError } from "./utils";
-import { verifyAppToken } from "../../muzer/lib/auth-utils"; // adjust path if needed
+import { verifyAppToken } from "@muzer/auth-utils"; // adjust path if needed
 
 // import os from "os"; // Not used, so commented out
 

@@ -4,16 +4,16 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "dev": "nodemon src/app.ts",
+    "dev": "nodemon --exec ts-node -r tsconfig-paths/register tsconfig.docker.json src/app.ts",
     "start": "node dist/app.js",
-    "build": "npm run postinstall && npx tsc -b",
+    "build": "npx tsc -b",
     "postinstall": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.8.2",
+    "@prisma/client": "^5.22.0",
     "axios": "^1.7.7",
     "bullmq": "^5.12.14",
     "cors": "^2.8.5",
@@ -27,8 +27,9 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/ws": "^8.5.12",
     "nodemon": "^3.1.4",
-    "prisma": "^6.8.2",
+    "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.6.2"
   },
   "packageManager": "npm@11.4.1+sha512.fcee43884166b6f9c5d04535fb95650e9708b6948a1f797eddf40e9778646778a518dfa32651b1c62ff36f4ac42becf177ca46ca27d53f24b539190c8d91802b"

@@ -11,15 +11,20 @@ RUN apk add --no-cache openssl libc6-compat
 ENV LD_PRELOAD=/lib/libc.so.6
 
 # Copy both package.json and package-lock.json for reproducible installs
-COPY package.json package-lock.json ./
-
+COPY ws/package.json ws/package-lock.json ./
+# copy this file to habdle the @muzer/auth-utils error
+COPY muzer/lib ./muzer/lib
 # Clean and consistent install of dependencies according to package-lock.json
 RUN npm ci --ignore-scripts
 
-COPY . .
+COPY ws/src ./src
+COPY ws/tsconfig.json ./tsconfig.json
+COPY ws/.env ./ 
+ # Only if you need .env in container
+
 
 # Run postinstall if needed, which might generate Prisma client
-RUN npm run postinstall
+# RUN npm run postinstall
 
 
 # Stage 2: Development server

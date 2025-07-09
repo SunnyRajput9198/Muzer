@@ -2,7 +2,7 @@ import type { NextAuthOptions} from "next-auth";
 import bcrypt from "bcryptjs";
 import Credentials from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { generateAppToken } from "@/lib/auth-utils"; // ✅ Adjust the path if needed
+import { generateAppToken } from "./auth-utils"; // ✅ Adjust the path if needed
 import { emailSchema, passwordSchema } from "../schema/cridentials-schema";
 import { PrismaClientInitializationError } from "@prisma/client/runtime/library";
 import { PrismaClient } from "@prisma/client";
