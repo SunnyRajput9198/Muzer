@@ -26,9 +26,10 @@ ARG DATABASE_URL
 # Copy installed node_modules and prisma folder from installer stage
 COPY --from=installer /usr/src/app/node_modules ./node_modules
 COPY --from=installer /usr/src/app/prisma ./prisma
-
+# ENV PRISMA_QUERY_ENGINE_BINARY=/app/node_modules/.prisma/client/libquery_engine-linux-musl.so.node
 # Generate Prisma client with DATABASE_URL provided at build time
-RUN DATABASE_URL=$DATABASE_URL npx prisma generate
+RUN DATABASE_URL=$DATABASE_URL npx prisma generate --binary-target=linux-musl
+
 
 # Copy rest of the source files
 COPY . .

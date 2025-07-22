@@ -4,7 +4,8 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "dev": "nodemon --exec ts-node -r tsconfig-paths/register tsconfig.docker.json src/app.ts",
+   "dev:docker": "nodemon --exec ts-node -r tsconfig-paths/register src/app.ts",
+    "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/app.ts",
     "start": "node dist/app.js",
     "build": "npx tsc -b",
     "postinstall": "npx prisma generate"
@@ -13,7 +14,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "axios": "^1.7.7",
     "bullmq": "^5.12.14",
     "cors": "^2.8.5",
@@ -21,9 +21,11 @@
     "jsonwebtoken": "^9.0.2",
     "redis": "^4.7.0",
     "ws": "^8.18.0",
-    "youtube-search-api": "^1.2.2"
+    "youtube-search-api": "^1.2.2",
+    "@muzer/auth-utils": "file:../muzer/lib/auth-utils"
   },
   "devDependencies": {
+    "@prisma/client": "^5.22.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/ws": "^8.5.12",
     "nodemon": "^3.1.4",

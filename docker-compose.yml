@@ -38,6 +38,8 @@ services:
     build:
       context: .
       dockerfile: ws/Dockerfile.dev
+      args:
+        DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
     env_file:
       - ./ws/.env
     ports:
@@ -45,8 +47,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+     DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
     volumes:
       - ./ws:/usr/src/app
+      - ./muzer/lib:/usr/src/app/muzer/lib   # ✅ Add this to mount just the lib
       - /usr/src/app/node_modules
 
 volumes:

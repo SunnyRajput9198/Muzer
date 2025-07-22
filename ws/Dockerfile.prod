@@ -1,0 +1,56 @@
+# Stage 1: Install dependencies
+FROM node:20-alpine AS installer
+
+WORKDIR /usr/src/app
+RUN corepack enable npm
+
+# Install dependencies required by Prisma and node-gyp
+RUN apk add --no-cache openssl libc6-compat python3 make g++ 
+
+# Set LD_PRELOAD for glibc compatibility (used by Prisma)
+ENV LD_PRELOAD=/lib/libc.so.6
+
+# Copy dependency files
+COPY ws/package.json ws/package-lock.json ./
+# Include external shared packages required at runtime
+COPY muzer/lib ./muzer/lib
+
+# Install dependencies
+RUN npm ci --omit=dev
+
+# Copy WebSocket server source code
+COPY ws/src ./src
+COPY ws/tsconfig.json ./
+COPY ws/.env ./
+# Generate Prisma client (optional, if you use it in ws)
+ENV PRISMA_QUERY_ENGINE_BINARY=/app/node_modules/.prisma/client/libquery_engine-linux-musl.so.node
+
+ARG DATABASE_URL
+RUN DATABASE_URL=$DATABASE_URL npm run postinstall
+
+# Transpile TypeScript
+RUN npx tsc
+
+# Stage 2: Production runtime
+FROM node:20-alpine AS runner
+
+WORKDIR /usr/src/app
+
+RUN apk add --no-cache openssl libc6-compat
+
+ENV NODE_ENV=production
+ENV LD_PRELOAD=/lib/libc.so.6
+
+# Copy only compiled JavaScript and required assets from build stage
+COPY --from=installer /usr/src/app/node_modules ./node_modules
+COPY --from=installer /usr/src/app/muzer ./muzer
+COPY --from=installer /usr/src/app/src ./src
+COPY --from=installer /usr/src/app/.env ./
+
+
+
+# Expose the port your WebSocket server listens on
+EXPOSE 8080
+
+# Run the server (adjust the entrypoint if needed)
+CMD ["node", "src/index.js"]

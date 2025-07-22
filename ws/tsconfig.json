@@ -10,10 +10,10 @@
     "rootDir": "../",
     "baseUrl": ".",
     "paths": {
-      "@muzer/*": ["../muzer/lib/*"]
+      "@muzer/auth-utils": ["muzer/lib/auth-utils"]
     },
     "moduleResolution": "node",
     "resolveJsonModule": true
   },
-  "include": ["src","../muzer/lib"],
+  "include": ["src","muzer/lib"]
 }

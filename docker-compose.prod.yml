@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  app:
+    container_name: muzer-prod
+    build:
+      context: ./muzer
+      dockerfile: Dockerfile.prod
+      args:
+        DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+    env_file:
+      - ./muzer/.env
+    ports:
+      - "3000:3000"
+      - "5555:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  websockets:
+    container_name: websockets-prod
+    restart: always
+    build:
+      context: .
+      dockerfile: ws/Dockerfile.prod
+      args:
+        DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+    env_file:
+      - ./ws/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    container_name: postgres-prod
+    image: postgres:15-alpine
+    restart: always
+    env_file:
+      - ./muzer/.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:

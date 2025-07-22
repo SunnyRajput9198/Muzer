@@ -18,14 +18,16 @@ COPY muzer/lib ./muzer/lib
 RUN npm ci --ignore-scripts
 
 COPY ws/src ./src
-COPY ws/tsconfig.json ./tsconfig.json
+COPY ws/tsconfig.json ./
 COPY ws/.env ./ 
  # Only if you need .env in container
+COPY ws/prisma ./prisma
 
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
 
-# Run postinstall if needed, which might generate Prisma client
-# RUN npm run postinstall
-
+RUN echo "DATABASE_URL from ARG: $DATABASE_URL"
+RUN npx prisma generate
 
 # Stage 2: Development server
 FROM node:20-alpine AS dev
@@ -45,4 +47,4 @@ COPY --from=installer /usr/src/app/ ./
 # Expose the port your WebSocket service runs on
 EXPOSE 8080
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev:docker"]

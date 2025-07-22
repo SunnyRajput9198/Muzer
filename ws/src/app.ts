@@ -179,8 +179,11 @@ async function main() {
     console.log("Client connected from:", origin);
     handleConnection(ws);
   });
-  const PORT = process.env.PORT ?? 8080;
-  server.listen(PORT, () => {
-    console.log(`${process.pid}: WebSocket server is running on ${PORT}`);
-  });
+ const PORT = parseInt(process.env.PORT || '8080', 10); // ✅ convert to number
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`${process.pid}: WebSocket server is running on ${PORT}`);
+});
+
+
 }

@@ -3,8 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@muzer/*": ["muzer/lib/*"]
+      "@muzer/auth-utils": ["muzer/lib/auth-utils"]
     }
   },
-  "include": ["src", "muzer/lib"]
+  "include": ["src", "muzer/lib/auth-utils"]
 }
