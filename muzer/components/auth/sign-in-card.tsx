@@ -121,19 +121,8 @@ export default function SigninCard({ setFormType: setState }: SigninCardProps) {
         </form>
         <Separator className="bg-gradient-to-r from-gray-800 via-neutral-500 to-gray-800" />
         <div className="flex flex-col items-center gap-y-2.5">
-          <Button
-            disabled={pending}
-            onClick={() => {
-              handleGoogleSignin("google");
-            }}
-            size={"lg"}
-            className="relative w-full bg-white text-black hover:bg-white/90"
-          >
-            <FcGoogle className="absolute left-2.5 top-3 size-5" />
-            Continue with google
-          </Button>
           <p className="text-xs text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            Don &apos;t have an account?{" "}
             <span
               className="cursor-pointer text-sky-700 hover:underline"
               onClick={() => setState("signUp")}

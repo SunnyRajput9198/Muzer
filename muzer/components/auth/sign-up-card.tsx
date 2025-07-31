@@ -136,17 +136,6 @@ export default function SignupCard({ setFormType: setState }: SignupCardProps) {
         </form>
         <Separator className="bg-gradient-to-r from-gray-800 via-neutral-500 to-gray-800" />
         <div className="flex flex-col items-center gap-y-2.5">
-          <Button
-            disabled={pending}
-            onClick={() => {
-              handleGoogleSignup("google");
-            }}
-            size={"lg"}
-            className="relative w-full bg-white text-black hover:bg-white/90"
-          >
-            <FcGoogle className="absolute left-2.5 top-3 size-5" />
-            Continue with google
-          </Button>
           <p className="text-xs text-muted-foreground">
             Already have an account?{" "}
             <span

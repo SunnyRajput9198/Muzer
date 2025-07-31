@@ -2,10 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.YT_REGEX = void 0;
 exports.cn = cn;
-const clsx_1 = require("clsx");
-const tailwind_merge_1 = require("tailwind-merge");
-exports.YT_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})(?:&.*)?(?:list=([a-zA-Z0-9_-]+))?/;
-function cn(...inputs) {
+var clsx_1 = require("clsx");
+var tailwind_merge_1 = require("tailwind-merge");
+exports.YT_REGEX = /^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})(?:\?(.+))?$/;
+function cn() {
+    var inputs = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        inputs[_i] = arguments[_i];
+    }
     return (0, tailwind_merge_1.twMerge)((0, clsx_1.clsx)(inputs));
 }
 /* Explanation:if you want to read

@@ -1,7 +1,7 @@
 import { WebSocket } from "ws";
 
 const YT_REGEX =
- /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})(?:&.*)?(?:list=([a-zA-Z0-9_-]+))?/;
+/^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})(?:\?(.+))?$/;
 
 export const isValidYoutubeURL = (data: string) => {
   return data.match(YT_REGEX);

@@ -17,11 +17,12 @@ import {
 import { useSession } from "next-auth/react";
 import Appbar from "@/components/Appbar";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter,usePathname } from "next/navigation";
 export default function LandingPage() {
 
   const session = useSession();
   const router = useRouter();
+   const pathname = usePathname();
 
   const handleGetStarted = () => {
     if (session.data?.user) {

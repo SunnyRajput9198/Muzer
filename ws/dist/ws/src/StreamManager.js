@@ -8,10 +8,10 @@ exports.RoomManager = void 0;
 const youtube_search_api_1 = __importDefault(require("youtube-search-api"));
 const client_1 = require("@prisma/client");
 const utils_1 = require("./utils");
-const TIME_SPAN_FOR_VOTE = 1200000; // 20min
-const TIME_SPAN_FOR_QUEUE = 1200000; // 20min
+const TIME_SPAN_FOR_VOTE = 12000; // 12sec
+const TIME_SPAN_FOR_QUEUE = 60000; // 60sec
 const TIME_SPAN_FOR_REPEAT = 3600000;
-const MAX_QUEUE_LENGTH = 20;
+const MAX_QUEUE_LENGTH = 40;
 class RoomManager {
     constructor() {
         this.wsToUser = new Map(); // Add this
@@ -311,7 +311,7 @@ class RoomManager {
                 ws.send(JSON.stringify({
                     type: "error",
                     data: {
-                        message: "You can vote again after 20 minutes.",
+                        message: "You can vote again after 12 seconds.",
                     },
                 }));
             });
@@ -430,7 +430,7 @@ class RoomManager {
                     ws.send(JSON.stringify({
                         type: "error",
                         data: {
-                            message: "You can add again after 20 min.",
+                            message: "You can add again after 1 minute.",
                         },
                     }));
                 });

@@ -13,10 +13,10 @@ const prisma =new PrismaClient();
 // console.log("DEBUG: process.env.NEXTAUTH_SECRET:", process.env.NEXTAUTH_SECRET);
 export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ""
-    }),
+    // GoogleProvider({
+    //   clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ""
+    // }),
      // Custom credentials-based provider (email + password)
     Credentials({
       credentials: {

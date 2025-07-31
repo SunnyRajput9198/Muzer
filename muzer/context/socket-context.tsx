@@ -91,7 +91,9 @@ useEffect(() => {
       session.data?.user?.id &&
       !socket
     ) {
-      const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "ws://localhost:8080";
+      const wsUrl =
+  process.env.NEXT_PUBLIC_WEBSOCKET_URL ??
+  (process.env.NODE_ENV === "production" ? "wss://your-production-url" : "ws://localhost:8080");
 
 
       // ✅ Use token from session.user.token (already set in your NextAuth config)

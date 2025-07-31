@@ -4,8 +4,8 @@ import youtubesearchapi from "youtube-search-api";
 import { PrismaClient } from "@prisma/client";
 import { getVideoId, isValidYoutubeURL } from "./utils";
 
-const TIME_SPAN_FOR_VOTE = 12000; // 20min
-const TIME_SPAN_FOR_QUEUE = 12000; // 20min
+const TIME_SPAN_FOR_VOTE = 12000; // 12sec
+const TIME_SPAN_FOR_QUEUE = 60000; // 60sec
 const TIME_SPAN_FOR_REPEAT = 3600000;
 const MAX_QUEUE_LENGTH = 40;
 
@@ -391,7 +391,7 @@ async castVote(
         JSON.stringify({
           type: "error",
           data: {
-            message: "You can vote again after 20 minutes.",
+            message: "You can vote again after 12 seconds.",
           },
         })
       );
@@ -549,7 +549,7 @@ async castVote(
             JSON.stringify({
               type: "error",
               data: {
-                message: "You can add again after 20 min.",
+                message: "You can add again after 1 minute.",
               },
             })
           );
