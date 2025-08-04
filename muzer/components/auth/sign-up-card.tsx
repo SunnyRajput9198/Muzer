@@ -28,42 +28,27 @@ export default function SignupCard({ setFormType: setState }: SignupCardProps) {
   const [pending, setPending] = useState(false);
   const router = useRouter();
 
-  const signInWithProvider = async (provider: "google" | "credentials") => {
-    try {
-      if (provider === "credentials") {
-        const res = signIn(provider, {
-          email,
-          password,
-          redirect: false,
-          callbackUrl: "/home",
-        });
-        res.then((res) => {
-          if (res?.error) {
-            setError(res.error);
-          }
-          if (!res?.error) {
-            router.push("/");
-          }
-          setPending(false);
-        });
+ const signInWithProvider = async (provider: "credentials") => {
+  try {
+    if (provider === "credentials") {
+      const res = await signIn(provider, {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/home",
+      });
+      if (res?.error) {
+        setError(res.error);
+      } else {
+        router.push("/");
       }
-      if (provider === "google") {
-        const res = signIn(provider, {
-          redirect: false,
-          callbackUrl: "/home",
-        });
-        res.then((res) => {
-          if (res?.error) {
-            setError(res.error);
-          }
-          console.log(res);
-          setPending(false);
-        });
-      }
-    } catch (error) {
-      console.log(error);
+      setPending(false);
     }
-  };
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 
   const handlerCredentialSignup = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,12 +60,6 @@ export default function SignupCard({ setFormType: setState }: SignupCardProps) {
       return;
     }
     signInWithProvider("credentials");
-  };
-
-  const handleGoogleSignup = (provider: "google") => {
-    setError("");
-    setPending(true);
-    signInWithProvider(provider);
   };
 
   return (
@@ -101,7 +80,7 @@ export default function SignupCard({ setFormType: setState }: SignupCardProps) {
           <Input
             disabled={pending}
             value={email}
-            placeholder="Email"
+            placeholder="email"
             onChange={(e) => setEmail(e.target.value)}
             className="border-gray-400 bg-transparent text-white placeholder:text-gray-400 focus-visible:ring-purple-600 focus-visible:ring-offset-0"
             type="email"

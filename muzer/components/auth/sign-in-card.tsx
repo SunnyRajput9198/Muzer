@@ -22,46 +22,27 @@ export default function SigninCard({ setFormType: setState }: SigninCardProps) {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const signInWithProvider = async (provider: "google" | "credentials") => {
-    try {
-      if (provider === "credentials") {
-        const res = signIn(provider, {
-          email,
-          password,
-          redirect: false,
-          callbackUrl: "/home",
-        });
-        res.then((res) => {
-          if (res?.error) {
-            setError(res.error);
-          }
-          if (!res?.error) {
-            router.push("/");
-          }
-          setPending(false);
-        });
+ const signInWithProvider = async (provider: "credentials") => {
+  try {
+    if (provider === "credentials") {
+      const res = await signIn(provider, {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/home",
+      });
+      if (res?.error) {
+        setError(res.error);
+      } else {
+        router.push("/");
       }
-      if (provider === "google") {
-        const res = signIn(provider, {
-          redirect: false,
-          callbackUrl: "/home",
-        });
-        res.then((res) => {
-          if (res?.error) {
-            setError(res.error);
-          }
-
-          if (!res?.error) {
-            router.push("/");
-          }
-          console.log(res);
-          setPending(false);
-        });
-      }
-    } catch (error) {
-      console.log(error);
+      setPending(false);
     }
-  };
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 
   const handlerCredentialSignin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -71,11 +52,6 @@ export default function SigninCard({ setFormType: setState }: SigninCardProps) {
     signInWithProvider("credentials");
   };
 
-  const handleGoogleSignin = (provider: "google") => {
-    setError("");
-    setPending(true);
-    signInWithProvider(provider);
-  };
 
   return (
     <Card className="h-full w-full border-purple-600 bg-gray-800 bg-opacity-50 p-8">

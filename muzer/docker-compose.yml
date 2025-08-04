@@ -5,7 +5,7 @@ services:
       context: ./
       dockerfile: Dockerfile.dev
       args: # <--- CRUCIAL: Pass DATABASE_URL during build
-        DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+        DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     env_file:
       - .env # Loads other environment variables like APP_PORT
     ports:
@@ -27,7 +27,7 @@ services:
           ignore:
             - node_modules/
     environment:
-      DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+      DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     dns:
       - 8.8.8.8 # Google Public DNS
       - 8.8.4.4 # Google Public DNS
@@ -59,7 +59,7 @@ services:
     ports:
       - "${PRISMA_STUDIO_PORT}:5555"
     environment: # Prisma Studio needs the DATABASE_URL as an environment variable
-      DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+      DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 
 volumes:

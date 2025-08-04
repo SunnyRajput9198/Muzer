@@ -8,7 +8,6 @@ services:
       - ./muzer/.env
     ports:
       - "3000:3000"
-      - "5555:5555"
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,7 +38,7 @@ services:
       context: .
       dockerfile: ws/Dockerfile.dev
       args:
-        DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+        DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     env_file:
       - ./ws/.env
     ports:
@@ -48,7 +47,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-     DATABASE_URL: "postgresql://neondb_owner:npg_rxguqZR3Pk4O@ep-misty-bush-a86dxyz7-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+     DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     volumes:
       - ./ws:/usr/src/app
       - ./muzer/lib:/usr/src/app/muzer/lib   # ✅ Add this to mount just the lib
