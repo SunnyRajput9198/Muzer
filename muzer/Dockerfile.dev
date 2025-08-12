@@ -11,7 +11,7 @@ RUN apk add --no-cache openssl libc6-compat
 ENV LD_PRELOAD=/lib/libc.so.6
 
 # Copy package.json and package-lock.json for reproducible installs
-COPY package.json package-lock.json ./
+COPY muzer/package.json muzer/package-lock.json ./
 
 # Clean install dependencies based on lockfile
 RUN npm ci --ignore-scripts

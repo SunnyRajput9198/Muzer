@@ -2,8 +2,8 @@ services:
   app:
     container_name: muzer-docker
     build:
-      context: ./muzer
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: muzer/Dockerfile.dev
     env_file:
       - ./muzer/.env
     ports:
