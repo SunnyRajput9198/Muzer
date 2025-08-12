@@ -17,7 +17,7 @@ COPY muzer/package.json muzer/package-lock.json ./
 RUN npm ci --ignore-scripts
 
 # Copy all application files
-COPY . .
+COPY muzer/. .
 
 # Declare DATABASE_URL as a build argument
 COPY muzer/prisma ./prisma
