@@ -1,10 +1,8 @@
-##build ther docker image
-## push the docker image to the docker hub
-## SSH into our VM and start the docker image
 name: Deploy the backend
 on:
   push:
     branches: [ main ]
+
 jobs: 
   build:
     runs-on: ubuntu-latest
@@ -17,16 +15,20 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Build and push 
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./muzer/Dockerfile.dev
+          file: ./muzer/Dockerfile.dev   # change if path is wrong
           push: true
           tags: sunnyrajput9198/todo-app-backend:${{ github.sha }}
+
       - name: Deploy to the VM
         run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" &> ~/ssh_key
-          chmod 700 /home/runner/ssh_key
-          ssh -o StrictHostKeyChecking=no -i ~/ssh_key root@64.227.169.180 -t "docker stop user_backend && docker run --name user_backend -d -p 3000:3000 sunnyrajput9198/todo-app-backend:${{ github.sha }}"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/ssh_key
+          chmod 600 ~/ssh_key
+          ssh -o StrictHostKeyChecking=no -i ~/ssh_key root@64.227.169.180 -t "
+            docker rm -f user_backend || true &&
+            docker run --name user_backend -d -p 3000:3000 sunnyrajput9198/todo-app-backend:${{ github.sha }}
+          "
