@@ -24,9 +24,9 @@ jobs:
           context: .
           file: ./muzer/Dockerfile.dev
           push: true
-          tags: 100xdevs/todo-app-backend:${{ github.sha }}
+          tags: sunnyrajput9198/todo-app-backend:${{ github.sha }}
       - name: Deploy to the VM
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" &> ~/ssh_key
           chmod 700 /home/runner/ssh_key
-          ssh -o StrictHostKeyChecking=no -i ~/ssh_key root@64.227.169.180 -t "docker stop user_backend && docker run --name user_backend -d -p 3000:3000 100xdevs/todo-app-backend:${{ github.sha }}"
+          ssh -o StrictHostKeyChecking=no -i ~/ssh_key root@64.227.169.180 -t "docker stop user_backend && docker run --name user_backend -d -p 3000:3000 sunnyrajput9198/todo-app-backend:${{ github.sha }}"
