@@ -19,7 +19,8 @@ RUN npm ci --ignore-scripts
 
 COPY ws/src ./src
 COPY ws/tsconfig.json ./
-COPY ws/.env ./ 
+# commneted fro cicd
+# COPY ws/.env ./ 
  # Only if you need .env in container
 COPY ws/prisma ./prisma
 
