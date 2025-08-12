@@ -6,7 +6,7 @@ const YT_REGEX =
 export const isValidYoutubeURL = (data: string) => {
   return data.match(YT_REGEX);
 };
-
+ 
 export const getVideoId = (url: string) => {
   return url.match(YT_REGEX)?.[1];
 };
