@@ -20,8 +20,8 @@ RUN npm ci --ignore-scripts
 COPY . .
 
 # Declare DATABASE_URL as a build argument
+COPY muzer/prisma ./prisma
 ARG DATABASE_URL 
-
 # Run Prisma generate and any postinstall scripts with DATABASE_URL
 RUN DATABASE_URL=$DATABASE_URL npm run postinstall 
 
