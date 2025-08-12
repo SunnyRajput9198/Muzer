@@ -20,7 +20,7 @@ jobs:
         with:
           context: .
           file: ./muzer/Dockerfile.dev
-          build-args: DATABASE_URL= ${{ secrets.DATABASE_URL }}
+          build-args: DATABASE_URL=${{ secrets.DATABASE_URL }}
           push: true
           tags: sunnyrajput9198/todo-app-muzer:${{ github.sha }}
       - name: Deploy to the VM
