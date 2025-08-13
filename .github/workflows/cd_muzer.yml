@@ -22,9 +22,9 @@ jobs:
           file: ./muzer/Dockerfile.dev
           build-args: DATABASE_URL=${{ secrets.DATABASE_URL }}
           push: true
-          tags: sunnyrajput9198/todo-app-muzer:${{ github.sha }}
+          tags: sunnyrajput9198/saas-app:${{ github.sha }}
       - name: Deploy to the VM
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" &> ~/ssh_key
           chmod 700 /home/runner/ssh_key
-          ssh -o StrictHostKeyChecking=no -i ~/ssh_key root@64.227.169.180 -t "docker stop user_frontend && docker run --name user_frontend -d -p 8080:8080 sunnyrajput9198/todo-app-muzer:${{ github.sha }}"
+          ssh -o StrictHostKeyChecking=no -i ~/ssh_key root@64.227.169.180 -t "docker stop user_frontend && docker run --name user_frontend -d -p 8080:8080 sunnyrajput9198/saas-app:${{ github.sha }}"
