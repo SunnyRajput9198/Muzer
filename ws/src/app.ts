@@ -165,6 +165,7 @@ async function main() {
     const origin = req.headers.origin;
     const allowedOrigins = [
       "http://localhost:3000", // Your Next.js frontend URL
+      "http://13.60.242.217:3000",
       // "https://muzer.world", // Your Next.js frontend URL
       // "http://localhost:8080", // Potentially for testing
       // Add any other allowed origins here
