@@ -61,7 +61,7 @@ export default function SpacesCard({
             transition={{ duration: 0.4 }}
           >
             <Image
-              src="https://www.lummi.ai/api/render/image/3c0fe247-800b-4773-aa42-9d3a9eaed31f?token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjNjMGZlMjQ3LTgwMGItNDc3My1hYTQyLTlkM2E5ZWFlZDMxZiIsImRvd25sb2FkU2l6ZSI6Im1lZGl1bSIsInJlbmRlclNwZWNzIjp7ImVmZmVjdHMiOnsicmVmcmFtZSI6e30sImJncmVtb3ZlIjpmYWxzZX19LCJzaG91bGRBdXRvRG93bmxvYWQiOmZhbHNlLCJqdGkiOiI1LVFVLU1BeWFGbjMxYkFqM1RobWwiLCJpYXQiOjE3NTAxNDQ3NzcsImV4cCI6MTc1MDE0NDgzN30.1DwX-Gai0FU5Odn43syNJXrwXICoxcMBbneop3AKk4Y"
+              src="/lady.png"
               alt="Space image"
               layout="fill"
               objectFit="cover"

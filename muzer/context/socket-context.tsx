@@ -39,10 +39,10 @@ export const SocketContextProvider = ({ children }: PropsWithChildren) => {
   const connectWebSocket = (wsUrl: string) => {
     console.log(`Connecting to WebSocket: ${wsUrl}`);
     const ws = new WebSocket(wsUrl);
+    setSocket(ws);
 
    ws.onopen = () => {
   console.log("WebSocket connected.");
-  setSocket(ws);
 
   // ✅ Safely cast token as a string (if it exists)
   const token = session.data?.user?.token as string | undefined;
