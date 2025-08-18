@@ -6,14 +6,17 @@ services:
       dockerfile: muzer/Dockerfile.dev
     env_file:
       - ./muzer/.env
-    ports:
-      - "3000:3000"
+    # The port is no longer exposed to the host, Nginx will handle it.
+    # ports:
+    #   - "3000:3000" 
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ./muzer:/usr/src/app
       - /usr/src/app/node_modules
+    networks:
+      - muzer-net
 
   postgres:
     container_name: prisma-postgres
@@ -30,6 +33,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - muzer-net
 
   websockets:
     container_name: websockets
@@ -37,22 +42,43 @@ services:
     build:
       context: .
       dockerfile: ws/Dockerfile.dev
-      args:
-        DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     env_file:
       - ./ws/.env
-    ports:
-      - "8080:8080"
+    # The port is no longer exposed to the host, Nginx will handle it.
+    # ports:
+    #   - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-     DATABASE_URL: "postgresql://neondb_owner:npg_tNuOd95XvwCL@ep-dark-meadow-ade3y3rz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     volumes:
       - ./ws:/usr/src/app
-      - ./muzer/lib:/usr/src/app/muzer/lib   # ✅ Add this to mount just the lib
+      - ./muzer/lib:/usr/src/app/muzer/lib
       - /usr/src/app/node_modules
+    networks:
+      - muzer-net
+
+  nginx:
+    container_name: nginx-proxy
+    build:
+      context: ./nginx # We will create this directory
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Mount the Nginx config
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      # Mount Certbot files for SSL (ensure these paths are correct on your EC2 host)
+      - /etc/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - app
+      - websockets
+    networks:
+      - muzer-net
 
 volumes:
   postgres-data:
     external: false
+
+networks:
+  muzer-net:
+    driver: bridge
