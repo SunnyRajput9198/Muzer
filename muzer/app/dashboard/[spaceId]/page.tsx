@@ -94,7 +94,7 @@ export default function Page({ params }: PageProps) {
   if (connectionError) return <ErrorScreen>Cannot connect to socket server</ErrorScreen>;
   if (loading || loading1) return <LoadingScreen />;
   if (!user) return <ErrorScreen>Please log in...</ErrorScreen>;
-  if (creatorId && user.id !== creatorId) return <ErrorScreen>You are not the creator of this space</ErrorScreen>;
+  // if (creatorId && user.id !== creatorId) return <ErrorScreen>You are not the creator of this space</ErrorScreen>;
 
   return <StreamView creatorId={creatorId!} playVideo={true} spaceId={spaceId} />;
 }

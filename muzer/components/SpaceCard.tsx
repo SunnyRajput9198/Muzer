@@ -32,7 +32,23 @@ export default function SpacesCard({
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [spaceToDelete, setSpaceToDelete] = useState<string | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [isHovered, setIsHovered] = useState<string | null>(null)
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, spaceId: string) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    setMousePosition({ x, y })
+  }
+
+  const handleMouseEnter = (spaceId: string) => {
+    setIsHovered(spaceId)
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovered(null)
+  }
   const handleDeleteClick = (id: string) => {
     setSpaceToDelete(id);
     setIsDialogOpen(true);
@@ -45,6 +61,14 @@ export default function SpacesCard({
       setIsDialogOpen(false);
     }
   };
+   // Calculate tilt angles
+  const rotateX = isHovered
+    ? ((mousePosition.y - 100) / 100) * -8
+    : 0;
+  const rotateY = isHovered
+    ? ((mousePosition.x - 150) / 150) * 8
+    : 0;
+  const scale = isHovered ? 1.03 : 1;
 
   return (
     <motion.div
@@ -53,7 +77,16 @@ export default function SpacesCard({
       transition={{ duration: 0.5 }}
       className="p-4 md:p-6"
     >
-      <Card className="w-full max-w-3xl overflow-hidden rounded-3xl border border-blue-800 bg-[#1a1e2e] transition-all duration-300 ease-in-out hover:shadow-[0_10px_30px_rgba(37,99,235,0.3)]">
+       <Card
+        className="w-full max-w-3xl overflow-hidden rounded-3xl border border-blue-800 bg-[#121212] transition-all duration-300 ease-in-out hover:shadow-[0_10px_30px_rgba(37,99,235,0.3)]"
+        style={{
+          transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
+          transition: isHovered ? "transform 0.1s ease-out" : "transform 0.3s ease-out",
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <CardContent className="p-0">
           <motion.div
             className="relative h-52 w-full sm:h-64 md:h-72 lg:h-80 xl:h-96"
@@ -61,8 +94,8 @@ export default function SpacesCard({
             transition={{ duration: 0.4 }}
           >
             <Image
-              src="/lady.png"
-              alt="Space image"
+              src={"/lady.png"}
+              alt={space.name}
               layout="fill"
               objectFit="cover"
               className="rounded-t-3xl"
