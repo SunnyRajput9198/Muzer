@@ -29,3 +29,15 @@ Built with **Next.js, WebSockets, PostgreSQL, and Docker**, Muzer enables live q
 ```bash
 git clone https://github.com/SunnyRajput9198/Muzer.git
 cd Muzer
+
+```
+## 🐳 Running with Docker
+### Pull Prebuilt Images (Recommended)
+### App (Next.js + API)
+```bash
+docker pull sunnyrajput9198/saas-app:latest
+``` 
+### WebSocket service
+```bash
+docker pull sunnyrajput9198/saas-websockets:latest
+
