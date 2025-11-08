@@ -83,7 +83,9 @@ export default function SpacesCard({
           transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
           transition: isHovered ? "transform 0.1s ease-out" : "transform 0.3s ease-out",
         }}
+        // @ts-ignore
         onMouseMove={handleMouseMove}
+        // @ts-ignore
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
