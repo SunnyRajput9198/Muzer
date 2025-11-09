@@ -1,6 +1,6 @@
 # 🎶 Muzer – Party Music Streaming Platform  
 
-![Muzer Banner](https://github.com/SunnyRajput9198/Muzer/assets/your-image-id/banner.png)
+![Muzer Banner](/muzer/public/banner.jpg)
 
 > 🎧 **Collaborative music streaming for remote parties — enjoy and vote together in real time!**
 
