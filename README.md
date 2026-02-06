@@ -9,7 +9,7 @@ Muzer is a collaborative **party music streaming platform** where users create s
 Built with **Next.js, WebSockets, PostgreSQL, and Docker**, it provides a seamless, scalable real-time experience with queue voting and multi-user participation.
    
 ---
-
+    
 ## 💡 Why I Built Muzer
 Online hangouts often feel disconnected — everyone plays music separately.  
 **Muzer** was created to **recreate the shared vibe of house parties online**, letting friends anywhere listen, vote, and control the playlist together.
