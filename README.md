@@ -1,5 +1,7 @@
 # 🎶 Muzer – Party Music Streaming Platform  
 
+
+
 ![Muzer Banner]<br>
 
 <img src="/muzer/public/banner.jpg" alt="Muzer Banner" width="50" height="50"/> 
